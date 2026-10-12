@@ -1732,6 +1732,28 @@ body::before {
    ============================================ */
 
 /* Header User Profile Widget & Sync Badge */
+.btn-theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--border-light);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.btn-theme-toggle:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--accent-primary);
+  transform: translateY(-1px);
+}
+
 .user-profile-widget {
   display: flex;
   align-items: center;
@@ -1975,4 +1997,164 @@ body::before {
   opacity: 1;
   background: rgba(239, 68, 68, 0.15);
 }
+
+/* ============================================
+   日中モード (Daylight / Outdoor High-Contrast Mode)
+   ============================================ */
+
+[data-theme="light"] {
+  /* Base Backgrounds */
+  --bg-primary: #f8fafc;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #f1f5f9;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f8fafc;
+  --bg-modal: #ffffff;
+  --bg-input: #f1f5f9;
+  --bg-input-focus: #e2e8f0;
+
+  /* High-Contrast Texts */
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
+  --text-muted: #64748b;
+  --text-inverse: #ffffff;
+
+  /* Accents */
+  --accent-primary: #059669;
+  --accent-secondary: #10b981;
+  --accent-glow: rgba(5, 150, 105, 0.2);
+  --gradient-accent: linear-gradient(135deg, #059669, #047857);
+
+  /* Status Badges */
+  --status-pending: #475569;
+  --status-pending-bg: rgba(71, 85, 105, 0.12);
+  --status-contacting: #b45309;
+  --status-contacting-bg: rgba(180, 83, 9, 0.12);
+  --status-ok: #047857;
+  --status-ok-bg: rgba(4, 120, 87, 0.12);
+  --status-ng: #b91c1c;
+  --status-ng-bg: rgba(185, 28, 28, 0.12);
+
+  /* Type Badges */
+  --type-tournament: #4338ca;
+  --type-tournament-bg: rgba(67, 56, 202, 0.12);
+  --type-tm: #047857;
+  --type-tm-bg: rgba(4, 120, 87, 0.12);
+
+  /* Borders */
+  --border-subtle: #e2e8f0;
+  --border-light: #cbd5e1;
+  --border-accent: rgba(5, 150, 105, 0.4);
+
+  /* Shadows */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
+  --shadow-lg: 0 10px 25px rgba(15, 23, 42, 0.12);
+  --shadow-glow: 0 0 16px rgba(5, 150, 105, 0.15);
+}
+
+[data-theme="light"] body {
+  background-color: #f8fafc;
+  color: #0f172a;
+}
+
+[data-theme="light"] .header {
+  background: rgba(255, 255, 255, 0.96);
+  border-bottom: 1px solid #cbd5e1;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="light"] .logo-text {
+  color: #0f172a;
+}
+
+[data-theme="light"] .match-card {
+  background: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  box-shadow: 0 2px 10px rgba(15, 23, 42, 0.06);
+}
+
+[data-theme="light"] .match-card:hover {
+  border-color: #94a3b8;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.1);
+}
+
+[data-theme="light"] .match-progress {
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+[data-theme="light"] .progress-bar {
+  background: #e2e8f0;
+}
+
+[data-theme="light"] .candidate-item {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+[data-theme="light"] .candidate-item:hover {
+  background: #f1f5f9;
+}
+
+[data-theme="light"] .modal {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.15);
+}
+
+[data-theme="light"] .modal-header {
+  border-bottom: 1px solid #e2e8f0;
+}
+
+[data-theme="light"] .form-input,
+[data-theme="light"] .form-select {
+  background: #f8fafc;
+  border: 1.5px solid #cbd5e1;
+  color: #0f172a;
+}
+
+[data-theme="light"] .form-input:focus,
+[data-theme="light"] .form-select:focus {
+  background: #ffffff;
+  border-color: #059669;
+}
+
+[data-theme="light"] .btn-secondary {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+}
+
+[data-theme="light"] .btn-secondary:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+[data-theme="light"] .bottom-nav {
+  background: rgba(255, 255, 255, 0.96);
+  border-top: 1px solid #cbd5e1;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="light"] .bottom-nav-item {
+  color: #475569;
+}
+
+[data-theme="light"] .bottom-nav-item:hover,
+[data-theme="light"] .bottom-nav-item.active {
+  color: #059669;
+}
+
+[data-theme="light"] .allowed-users-list {
+  background: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+}
+
+[data-theme="light"] .allowed-user-item {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+}
+
 

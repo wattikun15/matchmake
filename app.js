@@ -401,6 +401,41 @@ function initPastMatchesToggle() {
   });
 }
 
+// ── Theme (Daylight / Outdoor High-Contrast Mode) ──
+function initThemeToggle() {
+  const toggleBtn = $('btn-theme-toggle');
+  const toggleIcon = $('theme-toggle-icon');
+  const toggleText = $('theme-toggle-text');
+
+  const applyTheme = (theme, showNotification = false) => {
+    if (theme === 'light') {
+      document.documentElement.setAttribute('data-theme', 'light');
+      if (toggleIcon) toggleIcon.textContent = '🌙';
+      if (toggleText) toggleText.textContent = '通常';
+      if (toggleBtn) toggleBtn.title = '通常モード（ダーク）に切り替え';
+      if (showNotification) showToast('☀️ 日中モード（屋外高視認性）に切り替えました', '☀️');
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+      if (toggleIcon) toggleIcon.textContent = '☀️';
+      if (toggleText) toggleText.textContent = '日中';
+      if (toggleBtn) toggleBtn.title = '日中モード（屋外高視認性）に切り替え';
+      if (showNotification) showToast('🌙 通常モード（ダーク）に切り替えました', '🌙');
+    }
+    try {
+      localStorage.setItem('matchboard_theme', theme);
+    } catch (e) {}
+  };
+
+  const savedTheme = localStorage.getItem('matchboard_theme') || 'dark';
+  applyTheme(savedTheme, false);
+
+  toggleBtn?.addEventListener('click', () => {
+    const currentTheme = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+    const nextTheme = currentTheme === 'light' ? 'dark' : 'light';
+    applyTheme(nextTheme, true);
+  });
+}
+
 // ── Match Type ──
 let selectedType = 'TM';
 
@@ -1406,6 +1441,7 @@ function init() {
   migrateTypesV1();
   initTypeSelector();
   initPastMatchesToggle();
+  initThemeToggle();
   initAuthAndAccess();
 
   dom.matchTime.addEventListener('change', (e) => {
