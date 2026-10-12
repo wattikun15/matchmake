@@ -860,16 +860,29 @@ function toggleStatusMenu(menuId) {
   document.querySelectorAll('.status-dropdown-menu.show').forEach(menu => {
     if (menu.id !== menuId) {
       menu.classList.remove('show');
+      menu.closest('.candidate-item')?.classList.remove('menu-open');
     }
   });
   const menu = document.getElementById(menuId);
-  if (menu) menu.classList.toggle('show');
+  if (menu) {
+    const isShowing = menu.classList.toggle('show');
+    const parent = menu.closest('.candidate-item');
+    if (parent) {
+      parent.classList.toggle('menu-open', isShowing);
+    }
+  }
 }
 
 function setStatus(matchId, candidateId, newStatus) {
-  const match = state.matches.find(m => m.id === matchId);
+  // メニューを閉じる
+  document.querySelectorAll('.status-dropdown-menu.show').forEach(menu => {
+    menu.classList.remove('show');
+    menu.closest('.candidate-item')?.classList.remove('menu-open');
+  });
+
+  const match = state.matches.find(m => String(m.id) === String(matchId));
   if (!match) return;
-  const candidate = match.candidates.find(c => c.id === candidateId);
+  const candidate = (match.candidates || []).find(c => String(c.id) === String(candidateId));
   if (!candidate) return;
 
   candidate.status = newStatus;
@@ -1543,6 +1556,7 @@ function init() {
     if (!e.target.closest('.status-dropdown')) {
       document.querySelectorAll('.status-dropdown-menu.show').forEach(menu => {
         menu.classList.remove('show');
+        menu.closest('.candidate-item')?.classList.remove('menu-open');
       });
     }
   });
@@ -1616,6 +1630,7 @@ function init() {
       }
       document.querySelectorAll('.status-dropdown-menu.show').forEach(menu => {
         menu.classList.remove('show');
+        menu.closest('.candidate-item')?.classList.remove('menu-open');
       });
     }
   });

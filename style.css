@@ -578,6 +578,7 @@ body::before {
 
 /* Candidate Item */
 .candidate-item {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -586,13 +587,19 @@ body::before {
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   margin-bottom: 8px;
-  transition: all var(--transition-fast);
+  transition: background var(--transition-fast), border-color var(--transition-fast);
   animation: fadeInUp 0.3s ease both;
 }
 
 .candidate-item:hover {
   background: var(--bg-input-focus);
   border-color: var(--border-light);
+}
+
+/* メニューが開いているときは親要素の重なり順を最前面にして背後への潜り込みを防ぐ */
+.candidate-item:has(.status-dropdown-menu.show),
+.candidate-item.menu-open {
+  z-index: 100 !important;
 }
 
 .candidate-info {
@@ -628,6 +635,7 @@ body::before {
 }
 
 .candidate-actions {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -656,13 +664,15 @@ body::before {
   transform: scale(0.97);
 }
 
-.status-badge.status-未打診 {
+.status-badge.status-未打診,
+.status-badge.status-未連絡 {
   background: var(--status-pending-bg);
   color: var(--status-pending);
   border-color: rgba(107, 114, 128, 0.25);
 }
 
-.status-badge.status-打診中 {
+.status-badge.status-打診中,
+.status-badge.status-連絡中 {
   background: var(--status-contacting-bg);
   color: var(--status-contacting);
   border-color: rgba(245, 158, 11, 0.25);
@@ -686,6 +696,11 @@ body::before {
   display: inline-block;
 }
 
+.status-dropdown:has(.status-dropdown-menu.show),
+.status-dropdown.menu-open {
+  z-index: 101 !important;
+}
+
 .status-dropdown-menu {
   position: absolute;
   top: calc(100% + 4px);
@@ -693,10 +708,10 @@ body::before {
   background: var(--bg-secondary);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-md);
-  padding: 4px;
-  z-index: 50;
-  min-width: 120px;
-  box-shadow: var(--shadow-lg);
+  padding: 6px;
+  z-index: 1000 !important;
+  min-width: 130px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
   animation: dropdownIn 0.2s ease;
   display: none;
 }
@@ -708,7 +723,8 @@ body::before {
 .status-dropdown-item {
   display: block;
   width: 100%;
-  padding: 8px 12px;
+  padding: 10px 14px;
+  min-height: 40px;
   border: none;
   background: transparent;
   color: var(--text-secondary);
@@ -729,6 +745,7 @@ body::before {
 .status-dropdown-item.active {
   background: var(--accent-glow);
   color: var(--accent-primary);
+  font-weight: 600;
 }
 
 /* Candidate Empty */
@@ -2155,6 +2172,21 @@ body::before {
 [data-theme="light"] .allowed-user-item {
   background: #ffffff;
   border: 1px solid #e2e8f0;
+}
+
+[data-theme="light"] .status-dropdown-menu {
+  background: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.15);
+}
+
+[data-theme="light"] .status-dropdown-item {
+  color: #334155;
+}
+
+[data-theme="light"] .status-dropdown-item:hover {
+  background: #f1f5f9;
+  color: #0f172a;
 }
 
 
