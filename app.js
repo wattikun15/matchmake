@@ -378,12 +378,26 @@ const dom = {
 
 // ── Past Matches Toggle ──
 function initPastMatchesToggle() {
-  if (state.showPastMatches === undefined) state.showPastMatches = true;
-  dom.togglePastMatches.checked = state.showPastMatches;
-  dom.togglePastMatches.addEventListener('change', (e) => {
-    state.showPastMatches = e.target.checked;
-    saveState();
+  const savedPreference = localStorage.getItem('matchboard_show_past');
+  if (savedPreference !== null) {
+    state.showPastMatches = savedPreference === 'true';
+  } else if (state.showPastMatches === undefined) {
+    state.showPastMatches = true;
+  }
+  dom.togglePastMatches.checked = !!state.showPastMatches;
+
+  const onToggle = (checked) => {
+    state.showPastMatches = checked;
+    dom.togglePastMatches.checked = checked;
+    try {
+      localStorage.setItem('matchboard_show_past', checked ? 'true' : 'false');
+    } catch(e) {}
     render();
+    showToast(checked ? '過去のマッチを表示しました' : 'これからの予定のみ表示中', '📅');
+  };
+
+  dom.togglePastMatches.addEventListener('change', (e) => {
+    onToggle(e.target.checked);
   });
 }
 
