@@ -1,0 +1,19 @@
+# Scratch & Temporary repair scripts
+fix*
+bad_*
+dump.txt
+test_extract.bin
+functions_list.txt
+found_line.txt
+list_funcs.py
+extract.py
+replay.py
+app_js_replayed.js
+
+# OS & Editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+__pycache__/
+*.pyc
