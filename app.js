@@ -2210,6 +2210,9 @@ let isInitialCloudLoadDone = false;
     const dataRef = ref(db, DB_PATHS.DATA);
     onValue(dataRef, (snapshot) => {
       const cloudData = snapshot.val();
+      
+      checkAndShowMigrationBanner(cloudData);
+
       if (!cloudData) {
         if (!isInitialCloudLoadDone) {
           isInitialCloudLoadDone = true;
@@ -2242,6 +2245,111 @@ let isInitialCloudLoadDone = false;
       console.error('Cloud sync listen error:', err);
       updateSyncBadge('error');
     });
+  }
+
+  function checkAndShowMigrationBanner(cloudData) {
+    const banner = $('migration-banner');
+    const bannerText = $('migration-banner-text');
+    if (!banner) return;
+
+    let localData = null;
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) localData = JSON.parse(raw);
+    } catch (e) {}
+
+    const localMatchCount = localData && Array.isArray(localData.matches) ? localData.matches.length : 0;
+    const cloudMatchCount = cloudData && Array.isArray(cloudData.matches) ? cloudData.matches.length : 0;
+
+    if (localMatchCount > 0 && cloudMatchCount === 0) {
+      if (bannerText) {
+        bannerText.textContent = `この端末に保存されている既存データ（マッチ ${localMatchCount}件）があります。クラウドに送信してGitHub Pages等と共有しますか？`;
+      }
+      banner.style.display = 'block';
+    } else {
+      banner.style.display = 'none';
+    }
+  }
+
+  async function forceUploadLocalToCloud() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed.matches) && parsed.matches.length > 0) state.matches = parsed.matches;
+        if (Array.isArray(parsed.teams) && parsed.teams.length > 0) state.teams = parsed.teams;
+        if (Array.isArray(parsed.locations) && parsed.locations.length > 0) state.locations = parsed.locations;
+        if (Array.isArray(parsed.members) && parsed.members.length > 0) state.members = parsed.members;
+      }
+
+      updateSyncBadge('syncing');
+      const dataRef = ref(db, DB_PATHS.DATA);
+      await set(dataRef, {
+        matches: state.matches || [],
+        teams: state.teams || [],
+        locations: state.locations || [],
+        members: state.members || [],
+        lastUpdated: Date.now(),
+        updatedBy: currentUser ? currentUser.email : 'manual_sync'
+      });
+      updateSyncBadge('synced');
+      render();
+      if ($('migration-banner')) $('migration-banner').style.display = 'none';
+      closeModal($('modal-access'));
+      showToast(`端末のデータ（マッチ${state.matches.length}件）をクラウドへ送信しました！`, '☁️');
+    } catch (err) {
+      console.error('Force upload error:', err);
+      showToast('クラウドへの送信に失敗しました', '❌');
+    }
+  }
+
+  function exportDataAsJson() {
+    try {
+      const exportObj = {
+        matches: state.matches || [],
+        teams: state.teams || [],
+        locations: state.locations || [],
+        members: state.members || [],
+        exportedAt: new Date().toISOString()
+      };
+      const jsonStr = JSON.stringify(exportObj, null, 2);
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `matchboard_backup_${todayString()}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast('JSONファイルを書き出しました', '📥');
+    } catch (err) {
+      console.error('Export error:', err);
+      showToast('書き出しに失敗しました', '❌');
+    }
+  }
+
+  function importDataFromJson(file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const parsed = JSON.parse(e.target.result);
+        if (Array.isArray(parsed.matches)) state.matches = parsed.matches;
+        if (Array.isArray(parsed.teams)) state.teams = parsed.teams;
+        if (Array.isArray(parsed.locations)) state.locations = parsed.locations;
+        if (Array.isArray(parsed.members)) state.members = parsed.members;
+
+        saveState();
+        render();
+        closeModal($('modal-access'));
+        showToast(`JSONデータを取り込みました（マッチ${state.matches.length}件）`, '✅');
+      } catch (err) {
+        console.error('Import parse error:', err);
+        showToast('JSONファイルの形式が正しくありません', '❌');
+      }
+    };
+    reader.readAsText(file);
   }
 
   function renderAllowedUsersList() {
@@ -2432,6 +2540,31 @@ let isInitialCloudLoadDone = false;
       e.preventDefault();
       const email = $('input-new-allowed-email').value;
       addAllowedUser(email);
+    });
+
+    // Data Migration & Sync Buttons
+    $('btn-banner-sync-now')?.addEventListener('click', () => {
+      forceUploadLocalToCloud();
+    });
+
+    $('btn-banner-dismiss')?.addEventListener('click', () => {
+      if ($('migration-banner')) $('migration-banner').style.display = 'none';
+    });
+
+    $('btn-force-upload-cloud')?.addEventListener('click', () => {
+      forceUploadLocalToCloud();
+    });
+
+    $('btn-export-json')?.addEventListener('click', () => {
+      exportDataAsJson();
+    });
+
+    $('input-import-json')?.addEventListener('change', (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (file) {
+        importDataFromJson(file);
+        e.target.value = '';
+      }
     });
 
     // 認証リスナー

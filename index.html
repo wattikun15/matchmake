@@ -61,6 +61,24 @@
     </div>
   </header>
 
+  <!-- ===== Migration Banner ===== -->
+  <div id="migration-banner" style="display: none; background: linear-gradient(90deg, #1e3a8a, #2563eb); color: #fff; padding: 10px 16px; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.2); box-shadow: 0 4px 12px rgba(0,0,0,0.2); z-index: 900; position: relative;">
+    <div style="max-width: 1200px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-size: 18px;">💡</span>
+        <span id="migration-banner-text">この端末に保存されている既存データがあります。クラウドに送信してGitHub Pages等と同期しますか？</span>
+      </div>
+      <div style="display: flex; gap: 8px;">
+        <button id="btn-banner-sync-now" style="background: #fff; color: #1e40af; border: none; padding: 5px 14px; border-radius: 6px; font-weight: 700; font-size: 12px; cursor: pointer; transition: transform 0.1s;">
+          今すぐクラウドに送信
+        </button>
+        <button id="btn-banner-dismiss" style="background: rgba(0,0,0,0.2); color: #fff; border: 1px solid rgba(255,255,255,0.3); padding: 5px 10px; border-radius: 6px; font-size: 12px; cursor: pointer;">
+          ✕ 閉じる
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- ===== Main Content ===== -->
   <main class="main">
     <!-- Empty State (shown when no matches) -->
@@ -585,6 +603,32 @@
 
         <div style="margin-top: 16px; padding: 10px; background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.25); border-radius: 8px; font-size: 12px; color: #93c5fd; line-height: 1.4;">
           💡 <strong>ヒント:</strong> 追加されたメンバーには、MatchBoardのURLを共有してください。Googleアカウントでログインすると利用可能になります。
+        </div>
+
+        <hr style="margin: 20px 0 16px; border: none; border-top: 1px solid var(--border-color);">
+
+        <!-- データ移行 & バックアップ -->
+        <div style="font-size: 14px; font-weight: 700; color: var(--text-primary); margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+          <span>💾</span>
+          <span>データ移行・バックアップ</span>
+        </div>
+        <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px; line-height: 1.5;">
+          PCローカル（localhost）に以前入力したデータがある場合、下のボタンからクラウドへ送信してGitHub Pagesと同期できます。
+        </p>
+
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+          <button type="button" class="btn-primary" id="btn-force-upload-cloud" style="width: 100%; justify-content: center; padding: 10px;">
+            <span>☁️ この端末のデータをクラウドに送信（上書き同期）</span>
+          </button>
+          <div style="display: flex; gap: 8px;">
+            <button type="button" class="btn-secondary" id="btn-export-json" style="flex: 1; justify-content: center;">
+              <span>📥 JSON書き出し</span>
+            </button>
+            <label class="btn-secondary" style="flex: 1; justify-content: center; cursor: pointer; margin: 0; display: inline-flex; align-items: center;">
+              <span>📤 JSON取り込み</span>
+              <input type="file" id="input-import-json" accept=".json" style="display: none;">
+            </label>
+          </div>
         </div>
       </div>
     </div>
