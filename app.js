@@ -609,9 +609,16 @@ function render() {
 }
 
 function renderMatchCard(match) {
-  const okTeams = match.candidates.filter(c => c.status === 'OK');
+  if (!match.candidates || !Array.isArray(match.candidates)) {
+    match.candidates = match.candidates ? Object.values(match.candidates).filter(Boolean) : [];
+  }
+  if (!match.participants) {
+    match.participants = {};
+  }
+
+  const okTeams = match.candidates.filter(c => c && c.status === 'OK');
   const okCount = okTeams.length;
-  const needed = Math.max(0, match.teamCount - 1);
+  const needed = Math.max(0, (match.teamCount || 0) - 1);
   const progressPct = needed > 0 ? Math.min(100, (okCount / needed) * 100) : 0;
   const isComplete = okCount >= needed && needed > 0;
 
@@ -2237,10 +2244,32 @@ function startCloudSync() {
 
     isInitialCloudLoadDone = true;
     let hasChange = false;
-    if (cloudData.matches) { state.matches = cloudData.matches; hasChange = true; }
-    if (cloudData.teams) { state.teams = cloudData.teams; hasChange = true; }
-    if (cloudData.locations) { state.locations = cloudData.locations; hasChange = true; }
-    if (cloudData.members) { state.members = cloudData.members; hasChange = true; }
+    if (cloudData.matches) {
+      let rawList = Array.isArray(cloudData.matches) ? cloudData.matches : Object.values(cloudData.matches);
+      state.matches = rawList.filter(Boolean).map(m => {
+        let cand = m.candidates || [];
+        if (!Array.isArray(cand)) cand = Object.values(cand);
+        return {
+          ...m,
+          candidates: cand.filter(Boolean),
+          participants: m.participants || {},
+          participantNotes: m.participantNotes || {}
+        };
+      });
+      hasChange = true;
+    }
+    if (cloudData.teams) {
+      state.teams = (Array.isArray(cloudData.teams) ? cloudData.teams : Object.values(cloudData.teams)).filter(Boolean);
+      hasChange = true;
+    }
+    if (cloudData.locations) {
+      state.locations = (Array.isArray(cloudData.locations) ? cloudData.locations : Object.values(cloudData.locations)).filter(Boolean);
+      hasChange = true;
+    }
+    if (cloudData.members) {
+      state.members = (Array.isArray(cloudData.members) ? cloudData.members : Object.values(cloudData.members)).filter(Boolean);
+      hasChange = true;
+    }
 
     if (hasChange) {
       try {
