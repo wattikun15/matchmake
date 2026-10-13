@@ -707,10 +707,31 @@ function renderMatchCard(match) {
   }
 
   const okTeams = match.candidates.filter(c => c && c.status === 'OK');
+  const contactingTeams = match.candidates.filter(c => c && c.status === '連絡中');
+  const ngTeams = match.candidates.filter(c => c && (c.status === 'NG' || c.status === '不参加'));
+  const uncontactedTeams = match.candidates.filter(c => c && (c.status === '未連絡' || c.status === '未打診'));
+  const respondedCount = okTeams.length + ngTeams.length;
+
   const okCount = okTeams.length;
   const needed = Math.max(1, match.teamCount || 2);
   const progressPct = needed > 0 ? Math.min(100, (okCount / needed) * 100) : 0;
   const isComplete = okCount >= needed && needed > 0;
+
+  // VS 対戦カードスロットの組み立て
+  const vsSlots = [];
+  okTeams.forEach(t => {
+    vsSlots.push(`<span class="vs-team confirmed">✅ ${escapeHtml(t.teamName)}</span>`);
+  });
+  const remainingSlots = Math.max(0, needed - okTeams.length);
+  for (let i = 0; i < remainingSlots; i++) {
+    const isContacting = contactingTeams.length > i;
+    if (isContacting) {
+      vsSlots.push(`<span class="vs-team pending" title="現在打診中（返答待ち）">💬 相手調整中...</span>`);
+    } else {
+      vsSlots.push(`<span class="vs-team pending" title="相手募集中">🔍 相手募集中</span>`);
+    }
+  }
+  const vsTeamsHtml = vsSlots.join('<span class="vs-separator">VS</span>');
 
   const pStatusCounts = { '参加': 0, '返答待ち': 0, '不参加': 0, '声掛検討': 0 };
   if (match.participants) {
@@ -755,6 +776,10 @@ function renderMatchCard(match) {
     statusBadgeHtml = `<span class="badge badge-match-status ${isComplete ? 'complete' : ''}">${isComplete ? '成立！ ✅' : `調整中 ${okCount}/${needed}`}</span>`;
   }
 
+  const contactingBadgeHtml = contactingTeams.length > 0
+    ? `<span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.35); font-weight: 600;">💬 声掛け中 ${contactingTeams.length}</span>`
+    : '';
+
   const candidateRows = match.candidates.map(c => renderCandidateItem(match.id, c)).join('');
 
   const loc = state.locations.find(l => l.id === match.locationId);
@@ -777,6 +802,7 @@ function renderMatchCard(match) {
             <span class="badge badge-team-count">${match.teamCount}チーム</span>
             ${autoMatchBadgeHtml}
             ${statusBadgeHtml}
+            ${contactingBadgeHtml}
           </div>
           
           <div class="mheader-location" title="${loc ? escapeHtml(loc.name) : '未定'}">
@@ -794,19 +820,46 @@ function renderMatchCard(match) {
             <button class="btn-icon danger" data-action="delete-match" data-match-id="${match.id}" title="削除">🗑️</button>
           </div>
         </div>
+
+        <!-- ⚽ 対戦カード (VS表示) & 声掛けパイプライン進捗 -->
+        <div class="match-vs-container" data-action="toggle" data-match-id="${match.id}">
+          <div class="match-vs-header">
+            <span class="match-vs-label">⚽ 対戦カード</span>
+            <span style="font-size: 11px; color: var(--text-muted);">${match._expanded ? '▲ 閉じる' : '▼ 候補・詳細を見る'}</span>
+          </div>
+          <div class="match-vs-teams">
+            ${vsTeamsHtml}
+          </div>
+
+          <!-- 声掛け・返答状況サマリーチップ -->
+          <div class="candidate-summary-chips">
+            <div class="summary-chip chip-contacting" title="現在連絡中で返答待ちのチーム数">
+              <span class="chip-icon">💬</span>
+              <span class="chip-label">声掛け中</span>
+              <span class="chip-count">${contactingTeams.length}</span>
+            </div>
+            <div class="summary-chip chip-responded" title="返答をもらったチーム数（OK: ${okTeams.length} / NG: ${ngTeams.length}）">
+              <span class="chip-icon">📬</span>
+              <span class="chip-label">返答あり</span>
+              <span class="chip-count">${respondedCount}</span>
+              <span class="chip-sub">(${okTeams.length}OK / ${ngTeams.length}NG)</span>
+            </div>
+            <div class="summary-chip chip-uncontacted" title="まだ声掛けしていない候補チーム数">
+              <span class="chip-icon">📨</span>
+              <span class="chip-label">未連絡</span>
+              <span class="chip-count">${uncontactedTeams.length}</span>
+            </div>
+          </div>
+        </div>
+
         <div class="match-progress">
           <div class="progress-info">
-            <span class="progress-label">確定チーム</span>
+            <span class="progress-label">確定進捗</span>
             <span class="progress-count"><span class="ok-count">${okCount}</span> / ${needed}</span>
           </div>
           <div class="progress-bar">
             <div class="progress-bar-fill ${isComplete ? 'complete' : ''}" style="width: ${progressPct}%"></div>
           </div>
-          ${okTeams.length > 0 ? `
-          <div style="margin-top: 12px; display: flex; flex-wrap: wrap; gap: 6px;">
-            ${okTeams.map(t => `<span style="font-size: 11px; font-weight: 600; padding: 4px 8px; border-radius: 4px; background: rgba(16, 185, 129, 0.15); color: var(--status-ok); border: 1px solid rgba(16, 185, 129, 0.3);">✅${escapeHtml(t.teamName)}</span>`).join('')}
-          </div>
-          ` : ''}
         </div>
         <div class="candidate-section">
           <div class="candidate-list">

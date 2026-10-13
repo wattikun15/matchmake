@@ -474,6 +474,135 @@ body::before {
   color: var(--status-ng);
 }
 
+/* --- Match VS Banner & Candidate Pipeline --- */
+.match-vs-container {
+  margin: 0 20px 12px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.match-vs-container:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--border-light);
+}
+
+.match-vs-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.match-vs-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.match-vs-teams {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.vs-team {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+}
+
+.vs-team.confirmed {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--status-ok);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+}
+
+.vs-team.pending {
+  background: rgba(245, 158, 11, 0.08);
+  color: var(--status-contacting);
+  border: 1px dashed rgba(245, 158, 11, 0.35);
+  font-weight: 500;
+  font-style: italic;
+}
+
+.vs-separator {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--text-muted);
+  padding: 0 2px;
+  font-family: var(--font-main);
+  letter-spacing: 0.05em;
+}
+
+/* Candidate Status Summary Chips */
+.candidate-summary-chips {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.summary-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+  font-weight: 500;
+  background: var(--bg-input);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+}
+
+.summary-chip .chip-count {
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.summary-chip.chip-contacting {
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.3);
+  color: #fbbf24;
+}
+.summary-chip.chip-contacting .chip-count {
+  color: #f59e0b;
+}
+
+.summary-chip.chip-responded {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: rgba(59, 130, 246, 0.25);
+  color: #93c5fd;
+}
+.summary-chip.chip-responded .chip-count {
+  color: #60a5fa;
+}
+.summary-chip.chip-responded .chip-sub {
+  font-size: 10px;
+  opacity: 0.85;
+}
+
+.summary-chip.chip-uncontacted {
+  background: rgba(107, 114, 128, 0.1);
+  border-color: rgba(107, 114, 128, 0.2);
+  color: #94a3b8;
+}
+
 /* Progress Bar */
 .match-progress {
   padding: 0 20px 16px;
@@ -2187,6 +2316,70 @@ body::before {
 [data-theme="light"] .status-dropdown-item:hover {
   background: #f1f5f9;
   color: #0f172a;
+}
+
+[data-theme="light"] .match-vs-container {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+}
+
+[data-theme="light"] .match-vs-container:hover {
+  background: #f1f5f9;
+  border-color: #94a3b8;
+}
+
+[data-theme="light"] .match-vs-label {
+  color: #64748b;
+}
+
+[data-theme="light"] .vs-team.confirmed {
+  background: #ecfdf5;
+  color: #065f46;
+  border: 1.5px solid #10b981;
+}
+
+[data-theme="light"] .vs-team.pending {
+  background: #fffbeb;
+  color: #92400e;
+  border: 1.5px dashed #f59e0b;
+}
+
+[data-theme="light"] .vs-separator {
+  color: #94a3b8;
+}
+
+[data-theme="light"] .candidate-summary-chips {
+  border-top-color: #e2e8f0;
+}
+
+[data-theme="light"] .summary-chip {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #334155;
+}
+
+[data-theme="light"] .summary-chip.chip-contacting {
+  background: #fef3c7;
+  border-color: #f59e0b;
+  color: #92400e;
+}
+[data-theme="light"] .summary-chip.chip-contacting .chip-count {
+  color: #b45309;
+}
+
+[data-theme="light"] .summary-chip.chip-responded {
+  background: #eff6ff;
+  border-color: #3b82f6;
+  color: #1e40af;
+}
+[data-theme="light"] .summary-chip.chip-responded .chip-count {
+  color: #1d4ed8;
+}
+
+[data-theme="light"] .summary-chip.chip-uncontacted {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #475569;
 }
 
 
