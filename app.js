@@ -1001,7 +1001,10 @@ function renderMatchCard(match) {
               })()}
             </div>
             <div class="quick-add-custom-row">
-              <input type="text" class="quick-team-input" id="quick-team-input-${match.id}" placeholder="その他のチーム名を入力して即追加..." data-match-id="${match.id}">
+              <div class="quick-team-search-wrap">
+                <input type="text" class="quick-team-input" id="quick-team-input-${match.id}" placeholder="その他のチーム名を入力して即追加..." data-match-id="${match.id}" autocomplete="off">
+                <ul class="quick-team-suggest-list" id="quick-team-suggest-${match.id}"></ul>
+              </div>
               <button type="button" class="btn-quick-add-custom" data-action="quick-add-custom-team" data-match-id="${match.id}">＋ 追加</button>
             </div>
           </div>
@@ -1141,17 +1144,142 @@ function attachCardEvents() {
     }
   };
 
-  dom.matchGrid.onkeydown = (e) => {
-    if (e.key === 'Enter' && e.target.classList.contains('quick-team-input')) {
-      e.preventDefault();
+  dom.matchGrid.oninput = (e) => {
+    if (e.target.classList.contains('quick-team-input')) {
+      renderQuickTeamSuggestions(e.target);
+    }
+  };
+
+  dom.matchGrid.addEventListener('focusin', (e) => {
+    if (e.target.classList.contains('quick-team-input')) {
+      if (e.target.value.trim()) {
+        renderQuickTeamSuggestions(e.target);
+      }
+    }
+  });
+
+  dom.matchGrid.addEventListener('focusout', (e) => {
+    if (e.target.classList.contains('quick-team-input')) {
       const matchId = e.target.dataset.matchId;
-      const name = e.target.value.trim();
-      if (name) {
-        quickAddCustomTeamToMatch(matchId, name);
-        e.target.value = '';
+      setTimeout(() => {
+        const list = document.getElementById(`quick-team-suggest-${matchId}`);
+        if (list) list.classList.remove('show');
+      }, 150);
+    }
+  });
+
+  dom.matchGrid.onkeydown = (e) => {
+    if (e.target.classList.contains('quick-team-input')) {
+      const matchId = e.target.dataset.matchId;
+      const list = document.getElementById(`quick-team-suggest-${matchId}`);
+      const items = list ? list.querySelectorAll('.quick-suggest-item') : [];
+
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        if (!list || !list.classList.contains('show') || items.length === 0) {
+          renderQuickTeamSuggestions(e.target);
+          return;
+        }
+        e.preventDefault();
+        let activeIdx = Array.from(items).findIndex(el => el.classList.contains('active'));
+        const delta = e.key === 'ArrowDown' ? 1 : -1;
+        if (activeIdx < 0) {
+          activeIdx = delta === 1 ? 0 : items.length - 1;
+        } else {
+          activeIdx = (activeIdx + delta + items.length) % items.length;
+        }
+        items.forEach((el, idx) => el.classList.toggle('active', idx === activeIdx));
+        items[activeIdx]?.scrollIntoView({ block: 'nearest' });
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        const activeItem = list && list.classList.contains('show') ? list.querySelector('.quick-suggest-item.active') : null;
+        if (activeItem && activeItem.dataset.teamId) {
+          quickAddTeamToMatch(matchId, activeItem.dataset.teamId);
+          e.target.value = '';
+          list.classList.remove('show');
+        } else {
+          const name = e.target.value.trim();
+          if (name) {
+            quickAddCustomTeamToMatch(matchId, name);
+            e.target.value = '';
+            if (list) list.classList.remove('show');
+          }
+        }
+      } else if (e.key === 'Escape') {
+        if (list) list.classList.remove('show');
       }
     }
   };
+}
+
+function renderQuickTeamSuggestions(input) {
+  const matchId = input.dataset.matchId;
+  const list = document.getElementById(`quick-team-suggest-${matchId}`);
+  if (!list) return;
+
+  const match = state.matches.find(m => String(m.id) === String(matchId));
+  if (!match) return;
+
+  const query = normalizeForSearch(input.value);
+  if (!query) {
+    list.innerHTML = '';
+    list.classList.remove('show');
+    return;
+  }
+
+  const existingTeamIds = new Set(match.candidates.map(c => String(c.teamId)).filter(Boolean));
+  let availableTeams = state.teams.filter(t => !existingTeamIds.has(String(t.id)));
+  if (match.category === 'シニア') {
+    availableTeams = availableTeams.filter(t => t.category === 'シニア' || t.category === '両方');
+  }
+
+  const matched = availableTeams
+    .map(t => {
+      const name = normalizeForSearch(t.name);
+      const affil = normalizeForSearch(t.affiliation);
+      let score = -1;
+      if (name.startsWith(query)) score = 0;
+      else if (name.includes(query)) score = 1;
+      else if (affil.includes(query)) score = 2;
+      return { t, score };
+    })
+    .filter(x => x.score >= 0)
+    .sort((a, b) => a.score - b.score)
+    .map(x => x.t);
+
+  list.innerHTML = '';
+  if (matched.length === 0) {
+    list.classList.remove('show');
+    return;
+  }
+
+  matched.slice(0, 8).forEach((team, idx) => {
+    const li = document.createElement('li');
+    li.className = 'quick-suggest-item' + (idx === 0 ? ' active' : '');
+    li.dataset.teamId = team.id;
+    li.dataset.matchId = matchId;
+
+    const catBadge = getCategoryBadge(team.category || '一般');
+    const affilText = team.affiliation ? ` <span style="font-size:11px;color:var(--text-muted);margin-left:4px;">(${escapeHtml(team.affiliation)})</span>` : '';
+
+    li.innerHTML = `
+      <span style="display:flex;align-items:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+        ${catBadge}
+        <strong>${escapeHtml(team.name)}</strong>${affilText}
+      </span>
+      <span style="font-size:11px;color:var(--accent-primary);font-weight:700;white-space:nowrap;margin-left:8px;">＋ 追加</span>
+    `;
+
+    li.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      quickAddTeamToMatch(matchId, team.id);
+      input.value = '';
+      list.classList.remove('show');
+    });
+
+    list.appendChild(li);
+  });
+
+  list.classList.add('show');
 }
 
 function quickAddTeamToMatch(matchId, teamId) {
