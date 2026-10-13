@@ -191,7 +191,40 @@ function loadState() {
   }
 }
 
+function normalizeMatch(match) {
+  if (!match) return match;
+  if (!match.candidates || !Array.isArray(match.candidates)) {
+    match.candidates = match.candidates ? Object.values(match.candidates).filter(Boolean) : [];
+  }
+  if (!match.participants || typeof match.participants !== 'object') {
+    match.participants = {};
+  }
+  if (!match.participantNotes || typeof match.participantNotes !== 'object') {
+    match.participantNotes = {};
+  }
+  return match;
+}
+
+function normalizeState() {
+  if (!state.matches || !Array.isArray(state.matches)) {
+    state.matches = state.matches ? Object.values(state.matches).filter(Boolean) : [];
+  }
+  state.matches.forEach(normalizeMatch);
+  if (!state.teams || !Array.isArray(state.teams)) {
+    state.teams = state.teams ? Object.values(state.teams).filter(Boolean) : [];
+  }
+  if (!state.locations || !Array.isArray(state.locations)) {
+    state.locations = state.locations ? Object.values(state.locations).filter(Boolean) : [];
+  }
+  if (!state.members || !Array.isArray(state.members)) {
+    state.members = state.members ? Object.values(state.members).filter(Boolean) : [];
+  }
+}
+
 function saveState() {
+  normalizeState();
+  state.lastUpdated = Date.now();
+
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   } catch (e) {
@@ -204,19 +237,21 @@ function saveState() {
 }
 
 let saveToCloudTimeout = null;
-function saveToCloud() {
+function saveToCloud(immediate = false) {
   updateSyncBadge('syncing');
   if (saveToCloudTimeout) clearTimeout(saveToCloudTimeout);
-  saveToCloudTimeout = setTimeout(async () => {
+
+  const doSave = async () => {
     isSavingToCloud = true;
     try {
+      normalizeState();
       const dataRef = ref(db, DB_PATHS.DATA);
       await set(dataRef, {
         matches: state.matches || [],
         teams: state.teams || [],
         locations: state.locations || [],
         members: state.members || [],
-        lastUpdated: Date.now(),
+        lastUpdated: state.lastUpdated || Date.now(),
         updatedBy: currentUser ? currentUser.email : 'unknown'
       });
       updateSyncBadge('synced');
@@ -226,9 +261,15 @@ function saveToCloud() {
     } finally {
       setTimeout(() => {
         isSavingToCloud = false;
-      }, 300);
+      }, 400);
     }
-  }, 400);
+  };
+
+  if (immediate) {
+    doSave();
+  } else {
+    saveToCloudTimeout = setTimeout(doSave, 100);
+  }
 }
 
 function updateSyncBadge(status) {
@@ -1190,7 +1231,7 @@ window.deleteTeam = function (id) {
   const team = state.teams.find(t => t.id === id);
   if (!team) return;
 
-  const isUsed = state.matches.some(m => m.candidates.some(c => c.teamId === id));
+  const isUsed = state.matches.some(m => (m.candidates || []).some(c => c && c.teamId === id));
   const warning = isUsed ? '\n※過去に紐付けたマッチの表示には影響しません。' : '';
 
   showConfirm('チームを削除', `「${team.name}」をマスターから削除しますか？${warning}`, () => {
@@ -1334,8 +1375,9 @@ function populateCandidateTeamSelect(matchCategory, selectedTeamId = '') {
 }
 
 function openAddCandidateModal(matchId) {
-  const match = state.matches.find(m => m.id === matchId);
+  const match = state.matches.find(m => String(m.id) === String(matchId));
   if (!match) return;
+  normalizeMatch(match);
 
   dom.candidateMatchId.value = matchId;
   dom.candidateId.value = '';
@@ -1351,9 +1393,10 @@ function openAddCandidateModal(matchId) {
 }
 
 function openEditCandidateModal(matchId, candidateId) {
-  const match = state.matches.find(m => m.id === matchId);
+  const match = state.matches.find(m => String(m.id) === String(matchId));
   if (!match) return;
-  const candidate = match.candidates.find(c => c.id === candidateId);
+  normalizeMatch(match);
+  const candidate = match.candidates.find(c => String(c.id) === String(candidateId));
   if (!candidate) return;
 
   dom.candidateMatchId.value = matchId;
@@ -1390,8 +1433,9 @@ function submitCandidate(e) {
     return;
   }
 
-  const match = state.matches.find(m => m.id === matchId);
+  const match = state.matches.find(m => String(m.id) === String(matchId));
   if (!match) return;
+  normalizeMatch(match);
 
   const team = state.teams.find(t => t.id === teamId);
   if (!team) return;
@@ -1403,7 +1447,7 @@ function submitCandidate(e) {
   }
 
   if (candidateId) {
-    const candidate = match.candidates.find(c => c.id === candidateId);
+    const candidate = match.candidates.find(c => String(c.id) === String(candidateId));
     if (candidate) {
       candidate.teamId = team.id;
       candidate.teamName = team.name;
@@ -1433,13 +1477,14 @@ function submitCandidate(e) {
 }
 
 function confirmDeleteCandidate(matchId, candidateId) {
-  const match = state.matches.find(m => m.id === matchId);
+  const match = state.matches.find(m => String(m.id) === String(matchId));
   if (!match) return;
-  const candidate = match.candidates.find(c => c.id === candidateId);
+  normalizeMatch(match);
+  const candidate = match.candidates.find(c => String(c.id) === String(candidateId));
   if (!candidate) return;
 
   showConfirm('候補を削除', `「${candidate.teamName}」を削除しますか？`, () => {
-    match.candidates = match.candidates.filter(c => c.id !== candidateId);
+    match.candidates = match.candidates.filter(c => String(c.id) !== String(candidateId));
     saveState();
     render();
     showToast('候補を削除しました', '🗑️');
@@ -1655,7 +1700,7 @@ function renderTeamSchedule() {
   if (!currentScheduleTeamId) return;
 
   const matchesForTeam = state.matches.filter(m =>
-    m.candidates.some(c => c.teamId === currentScheduleTeamId)
+    (m.candidates || []).some(c => c && c.teamId === currentScheduleTeamId)
   ).sort((a, b) => {
     if (!a.date && !b.date) return 0;
     if (!a.date) return 1;
@@ -1670,7 +1715,8 @@ function renderTeamSchedule() {
 
   let html = '';
   matchesForTeam.forEach(m => {
-    const candidate = m.candidates.find(c => c.teamId === currentScheduleTeamId);
+    const candidate = (m.candidates || []).find(c => c && c.teamId === currentScheduleTeamId);
+    if (!candidate) return;
     const loc = state.locations.find(l => l.id === m.locationId);
     const locName = loc ? loc.name : '未定';
     const statusClass = `status-${candidate.status}`;
@@ -1711,7 +1757,7 @@ function copyTeamSchedule() {
   if (!team) return;
 
   const matchesForTeam = state.matches.filter(m =>
-    m.candidates.some(c => c.teamId === currentScheduleTeamId)
+    (m.candidates || []).some(c => c && c.teamId === currentScheduleTeamId)
   ).sort((a, b) => {
     if (!a.date && !b.date) return 0;
     if (!a.date) return 1;
@@ -1725,7 +1771,8 @@ function copyTeamSchedule() {
     text += "現在予定されているスケジュールはありません\n";
   } else {
     matchesForTeam.forEach(m => {
-      const candidate = m.candidates.find(c => c.teamId === currentScheduleTeamId);
+      const candidate = (m.candidates || []).find(c => c && c.teamId === currentScheduleTeamId);
+      if (!candidate) return;
       const loc = state.locations.find(l => l.id === m.locationId);
       const locName = loc ? loc.name : '未定';
 
@@ -2307,6 +2354,16 @@ function startCloudSync() {
 
     if (isSavingToCloud) return;
 
+    const cloudLastUpdated = cloudData.lastUpdated || 0;
+    const localLastUpdated = state.lastUpdated || 0;
+
+    // ローカルの方が新しければ、古いクラウドデータで上書きせずクラウドへ最新保存する
+    if (localLastUpdated > cloudLastUpdated) {
+      console.log('Local data is newer than cloud. Re-saving to cloud...');
+      saveToCloud(true);
+      return;
+    }
+
     isInitialCloudLoadDone = true;
     let hasChange = false;
     if (cloudData.matches) {
@@ -2337,10 +2394,16 @@ function startCloudSync() {
     }
 
     if (hasChange) {
+      state.lastUpdated = cloudLastUpdated;
+      normalizeState();
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
       } catch (e) { }
       render();
+      if (dom.modalTeam && dom.modalTeam.classList.contains('show')) renderTeamList();
+      if (dom.modalLocation && dom.modalLocation.classList.contains('show')) renderLocationList();
+      if (dom.modalMember && dom.modalMember.classList.contains('show')) renderMemberList();
+      if (dom.modalTeamSchedule && dom.modalTeamSchedule.classList.contains('show')) renderTeamSchedule();
       updateSyncBadge('synced');
     }
   }, (err) => {
