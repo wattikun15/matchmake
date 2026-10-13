@@ -667,7 +667,7 @@ function renderMatchCard(match) {
 
   const okTeams = match.candidates.filter(c => c && c.status === 'OK');
   const okCount = okTeams.length;
-  const needed = Math.max(0, (match.teamCount || 0) - 1);
+  const needed = Math.max(1, match.teamCount || 2);
   const progressPct = needed > 0 ? Math.min(100, (okCount / needed) * 100) : 0;
   const isComplete = okCount >= needed && needed > 0;
 
