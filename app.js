@@ -769,13 +769,24 @@ function renderMatchCard(match) {
         vsSlots.push(`<span class="vs-team pending" title="相手募集中">🔍 相手募集中</span>`);
       }
     }
-    const vsTeamsHtml = vsSlots.join('<span class="vs-separator">VS</span>');
+    const vsTeamsHtml = vsSlots.join('');
+
+    let respondedSubText = '';
+    if (respondedCount > 0) {
+      if (okTeams.length > 0 && ngTeams.length > 0) {
+        respondedSubText = `<span class="chip-sub">(${okTeams.length}OK / ${ngTeams.length}NG)</span>`;
+      } else if (okTeams.length > 0) {
+        respondedSubText = `<span class="chip-sub">(${okTeams.length}OK)</span>`;
+      } else if (ngTeams.length > 0) {
+        respondedSubText = `<span class="chip-sub">(${ngTeams.length}NG)</span>`;
+      }
+    }
 
     vsContainerHtml = `
-        <!-- ⚽ 対戦カード (VS表示) & 声掛けパイプライン進捗 -->
+        <!-- ⚽ 対戦チーム (枠一覧) & 声掛けパイプライン進捗 -->
         <div class="match-vs-container" data-action="toggle" data-match-id="${match.id}">
           <div class="match-vs-header">
-            <span class="match-vs-label">⚽ 対戦カード</span>
+            <span class="match-vs-label">⚽ 対戦チーム</span>
             <span style="font-size: 11px; color: var(--text-muted);">${match._expanded ? '▲ 閉じる' : '▼ 候補・詳細を見る'}</span>
           </div>
           <div class="match-vs-teams">
@@ -793,7 +804,7 @@ function renderMatchCard(match) {
               <span class="chip-icon">📬</span>
               <span class="chip-label">返答あり</span>
               <span class="chip-count">${respondedCount}</span>
-              <span class="chip-sub">(${okTeams.length}OK / ${ngTeams.length}NG)</span>
+              ${respondedSubText}
             </div>
             <div class="summary-chip chip-uncontacted" title="まだ声掛けしていない候補チーム数">
               <span class="chip-icon">📨</span>
