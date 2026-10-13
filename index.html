@@ -17,7 +17,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <link rel="stylesheet" href="style.css?v=20261013_v10">
+  <link rel="stylesheet" href="style.css?v=20261013_v11">
 </head>
 <body>
 
@@ -139,6 +139,10 @@
                 <div class="type-option-icon">🏅</div>
                 <div class="type-option-label">区リーグ</div>
               </div>
+              <div class="type-option practice" data-type="練習">
+                <div class="type-option-icon">🏃</div>
+                <div class="type-option-label">練習</div>
+              </div>
             </div>
           </div>
 
@@ -184,13 +188,13 @@
           </div>
 
           <!-- Team Count -->
-          <div class="form-group">
+          <div class="form-group" id="group-match-team-count">
             <label class="form-label" for="match-team-count">チーム数</label>
             <input type="number" class="form-input form-input-number" id="match-team-count" min="2" max="20" value="2" required>
           </div>
 
           <!-- Auto Match -->
-          <div class="form-group" style="display: flex; align-items: center; gap: 8px; margin-top: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--border-subtle);">
+          <div class="form-group" id="group-match-auto-match" style="display: flex; align-items: center; gap: 8px; margin-top: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--border-subtle);">
             <input type="checkbox" id="match-auto-match" style="width: 16px; height: 16px; cursor: pointer;">
             <label for="match-auto-match" style="margin-bottom: 0; cursor: pointer; color: var(--text-primary);">自動マッチング（分析から除外する）</label>
           </div>
@@ -733,7 +737,7 @@
     }
   </script>
 
-  <script type="module" src="app.js?v=20261013_v10"></script>
+  <script type="module" src="app.js?v=20261013_v11"></script>
 
   <!-- PWA Service Worker Registration -->
   <script>

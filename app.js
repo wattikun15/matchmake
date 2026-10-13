@@ -338,7 +338,9 @@ const dom = {
   matchTimeManual: $('match-time-manual'),
   matchLocation: $('match-location'),
   matchTeamCount: $('match-team-count'),
+  groupMatchTeamCount: $('group-match-team-count'),
   matchAutoMatch: $('match-auto-match'),
+  groupMatchAutoMatch: $('group-match-auto-match'),
   matchCancelled: $('match-cancelled'),
   groupMatchCancelled: $('group-match-cancelled'),
   typeSelector: $('type-selector'),
@@ -480,6 +482,35 @@ function initThemeToggle() {
 // ── Match Type ──
 let selectedType = 'TM';
 
+function updateMatchFormForType(type) {
+  if (type === '練習') {
+    if (dom.matchTeamCount) {
+      dom.matchTeamCount.value = '1';
+      dom.matchTeamCount.min = '1';
+    }
+    if (dom.groupMatchTeamCount) {
+      dom.groupMatchTeamCount.style.display = 'none';
+    }
+    if (dom.matchAutoMatch) {
+      dom.matchAutoMatch.checked = false;
+    }
+    if (dom.groupMatchAutoMatch) {
+      dom.groupMatchAutoMatch.style.display = 'none';
+    }
+  } else {
+    if (dom.matchTeamCount) {
+      if (parseInt(dom.matchTeamCount.value) < 2) dom.matchTeamCount.value = '2';
+      dom.matchTeamCount.min = '2';
+    }
+    if (dom.groupMatchTeamCount) {
+      dom.groupMatchTeamCount.style.display = '';
+    }
+    if (dom.groupMatchAutoMatch) {
+      dom.groupMatchAutoMatch.style.display = 'flex';
+    }
+  }
+}
+
 function initTypeSelector() {
   const options = dom.typeSelector.querySelectorAll('.type-option');
   options.forEach(opt => {
@@ -500,6 +531,8 @@ function initTypeSelector() {
       if (selectedType === 'ミニサッカー大会' || selectedType === '中野区リーグ') {
         $('match-shinpad').checked = true;
       }
+
+      updateMatchFormForType(selectedType);
     });
   });
 }
@@ -510,6 +543,7 @@ function setTypeSelector(type) {
   options.forEach(opt => {
     opt.classList.toggle('selected', opt.dataset.type === type);
   });
+  updateMatchFormForType(type);
 }
 
 // ── Modal Helpers ──
@@ -706,6 +740,8 @@ function renderMatchCard(match) {
     match.participants = {};
   }
 
+  const isPractice = match.type === '練習';
+
   const okTeams = match.candidates.filter(c => c && c.status === 'OK');
   const contactingTeams = match.candidates.filter(c => c && c.status === '連絡中');
   const ngTeams = match.candidates.filter(c => c && (c.status === 'NG' || c.status === '不参加'));
@@ -717,21 +753,71 @@ function renderMatchCard(match) {
   const progressPct = needed > 0 ? Math.min(100, (okCount / needed) * 100) : 0;
   const isComplete = okCount >= needed && needed > 0;
 
-  // VS 対戦カードスロットの組み立て
-  const vsSlots = [];
-  okTeams.forEach(t => {
-    vsSlots.push(`<span class="vs-team confirmed">✅ ${escapeHtml(t.teamName)}</span>`);
-  });
-  const remainingSlots = Math.max(0, needed - okTeams.length);
-  for (let i = 0; i < remainingSlots; i++) {
-    const isContacting = contactingTeams.length > i;
-    if (isContacting) {
-      vsSlots.push(`<span class="vs-team pending" title="現在打診中（返答待ち）">💬 相手調整中...</span>`);
-    } else {
-      vsSlots.push(`<span class="vs-team pending" title="相手募集中">🔍 相手募集中</span>`);
+  // VS 対戦カードスロット、または練習バナーの組み立て
+  let vsContainerHtml = '';
+  if (!isPractice) {
+    const vsSlots = [];
+    okTeams.forEach(t => {
+      vsSlots.push(`<span class="vs-team confirmed">✅ ${escapeHtml(t.teamName)}</span>`);
+    });
+    const remainingSlots = Math.max(0, needed - okTeams.length);
+    for (let i = 0; i < remainingSlots; i++) {
+      const isContacting = contactingTeams.length > i;
+      if (isContacting) {
+        vsSlots.push(`<span class="vs-team pending" title="現在打診中（返答待ち）">💬 相手調整中...</span>`);
+      } else {
+        vsSlots.push(`<span class="vs-team pending" title="相手募集中">🔍 相手募集中</span>`);
+      }
     }
+    const vsTeamsHtml = vsSlots.join('<span class="vs-separator">VS</span>');
+
+    vsContainerHtml = `
+        <!-- ⚽ 対戦カード (VS表示) & 声掛けパイプライン進捗 -->
+        <div class="match-vs-container" data-action="toggle" data-match-id="${match.id}">
+          <div class="match-vs-header">
+            <span class="match-vs-label">⚽ 対戦カード</span>
+            <span style="font-size: 11px; color: var(--text-muted);">${match._expanded ? '▲ 閉じる' : '▼ 候補・詳細を見る'}</span>
+          </div>
+          <div class="match-vs-teams">
+            ${vsTeamsHtml}
+          </div>
+
+          <!-- 声掛け・返答状況サマリーチップ -->
+          <div class="candidate-summary-chips">
+            <div class="summary-chip chip-contacting" title="現在連絡中で返答待ちのチーム数">
+              <span class="chip-icon">💬</span>
+              <span class="chip-label">声掛け中</span>
+              <span class="chip-count">${contactingTeams.length}</span>
+            </div>
+            <div class="summary-chip chip-responded" title="返答をもらったチーム数（OK: ${okTeams.length} / NG: ${ngTeams.length}）">
+              <span class="chip-icon">📬</span>
+              <span class="chip-label">返答あり</span>
+              <span class="chip-count">${respondedCount}</span>
+              <span class="chip-sub">(${okTeams.length}OK / ${ngTeams.length}NG)</span>
+            </div>
+            <div class="summary-chip chip-uncontacted" title="まだ声掛けしていない候補チーム数">
+              <span class="chip-icon">📨</span>
+              <span class="chip-label">未連絡</span>
+              <span class="chip-count">${uncontactedTeams.length}</span>
+            </div>
+          </div>
+        </div>
+    `;
+  } else {
+    vsContainerHtml = `
+        <!-- 🏃 練習（対戦相手なし）カード案内 -->
+        <div class="match-practice-banner" data-action="toggle" data-match-id="${match.id}">
+          <div class="practice-banner-header">
+            <div class="practice-badge-text">
+              <span>🏃</span>
+              <span>通常練習・紅白戦（対戦相手なし）</span>
+            </div>
+            <span style="font-size: 11px; color: var(--text-muted);">${match._expanded ? '▲ 閉じる' : '▼ 要項・出欠を見る'}</span>
+          </div>
+          ${match.matchInfoNote ? `<div class="practice-banner-note">📝 備考: ${escapeHtml(match.matchInfoNote)}</div>` : ''}
+        </div>
+    `;
   }
-  const vsTeamsHtml = vsSlots.join('<span class="vs-separator">VS</span>');
 
   const pStatusCounts = { '参加': 0, '返答待ち': 0, '不参加': 0, '声掛検討': 0 };
   if (match.participants) {
@@ -763,20 +849,25 @@ function renderMatchCard(match) {
     typeBadgeHtml = '<span class="badge badge-league">🏅 区リーグ</span>';
   } else if (match.type === 'ミニサッカー大会') {
     typeBadgeHtml = '<span class="badge badge-tournament">🏆 ミニサッカー</span>';
+  } else if (match.type === '練習') {
+    typeBadgeHtml = '<span class="badge badge-practice">🏃 練習</span>';
   } else {
     typeBadgeHtml = `<span class="badge badge-league">⚽ ${escapeHtml(match.type)}</span>`;
   }
 
+  const teamCountBadgeHtml = isPractice ? '' : `<span class="badge badge-team-count">${match.teamCount}チーム</span>`;
   const autoMatchBadgeHtml = match.isAutoMatch ? `<span class="badge" style="background: var(--bg-tertiary); color: var(--text-muted); border-color: var(--border-subtle);">自動</span>` : '';
 
   let statusBadgeHtml = '';
   if (match.isCancelled) {
     statusBadgeHtml = `<span class="badge badge-match-status cancelled">中止 ❌</span>`;
+  } else if (isPractice) {
+    statusBadgeHtml = `<span class="badge badge-match-status complete">自チーム練習 ⚽</span>`;
   } else if (!match.isAutoMatch) {
     statusBadgeHtml = `<span class="badge badge-match-status ${isComplete ? 'complete' : ''}">${isComplete ? '成立！ ✅' : `調整中 ${okCount}/${needed}`}</span>`;
   }
 
-  const contactingBadgeHtml = contactingTeams.length > 0
+  const contactingBadgeHtml = (!isPractice && contactingTeams.length > 0)
     ? `<span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.35); font-weight: 600;">💬 声掛け中 ${contactingTeams.length}</span>`
     : '';
 
@@ -784,6 +875,55 @@ function renderMatchCard(match) {
 
   const loc = state.locations.find(l => l.id === match.locationId);
   const locHtml = loc ? `<div class="match-location">📍 ${escapeHtml(loc.name)}</div>` : '';
+
+  let detailsSectionHtml = '';
+  if (isPractice) {
+    detailsSectionHtml = `
+        <div class="practice-expanded-section">
+          <div class="practice-details-card">
+            <div class="practice-details-title">📋 練習要項・連絡事項</div>
+            <div class="practice-details-grid">
+              ${match.matchFormat ? `<div class="pdetail-item"><span class="pdetail-label">形式:</span> <span class="pdetail-val">${escapeHtml(match.matchFormat)}</span></div>` : ''}
+              ${match.matchFee ? `<div class="pdetail-item"><span class="pdetail-label">参加費:</span> <span class="pdetail-val">${escapeHtml(match.matchFee)}</span></div>` : ''}
+              ${match.matchUniform ? `<div class="pdetail-item"><span class="pdetail-label">持参ユニ:</span> <span class="pdetail-val">${escapeHtml(match.matchUniform)}</span></div>` : ''}
+              ${match.matchRecruitCount ? `<div class="pdetail-item"><span class="pdetail-label">目標人数:</span> <span class="pdetail-val">${match.matchRecruitCount}名</span></div>` : ''}
+              ${match.matchShinpad ? `<div class="pdetail-item"><span class="pdetail-label">すねあて:</span> <span class="pdetail-val">🛡️ 必須</span></div>` : ''}
+              ${match.matchSpikeForbidden ? `<div class="pdetail-item"><span class="pdetail-label">スパイク:</span> <span class="pdetail-val">🚫 不可</span></div>` : ''}
+            </div>
+            ${match.matchInfoNote ? `<div class="practice-details-note">📝 <strong>備考:</strong> ${escapeHtml(match.matchInfoNote)}</div>` : ''}
+            <div class="practice-action-row">
+              <button class="btn-primary" style="padding: 7px 14px; font-size: 13px;" data-action="manage-participants" data-match-id="${match.id}">
+                👥 メンバーの出欠を確認・変更 (${pStatusCounts['参加']}/${match.matchRecruitCount || '-'}名)
+              </button>
+            </div>
+          </div>
+        </div>
+    `;
+  } else {
+    detailsSectionHtml = `
+        <div class="match-progress">
+          <div class="progress-info">
+            <span class="progress-label">確定進捗</span>
+            <span class="progress-count"><span class="ok-count">${okCount}</span> / ${needed}</span>
+          </div>
+          <div class="progress-bar">
+            <div class="progress-bar-fill ${isComplete ? 'complete' : ''}" style="width: ${progressPct}%"></div>
+          </div>
+        </div>
+        <div class="candidate-section">
+          <div class="candidate-list">
+            <div class="candidate-list-header">
+              <span class="candidate-list-title">対戦候補 (${match.candidates.length}件)</span>
+              <button class="btn-add-candidate" data-action="add-candidate" data-match-id="${match.id}">＋ 候補を追加</button>
+            </div>
+            ${match.candidates.length > 0
+              ? candidateRows
+              : '<div class="candidate-empty">まだ候補がありません</div>'
+            }
+          </div>
+        </div>
+    `;
+  }
 
   return `
       <div class="match-card ${match._expanded ? 'expanded' : ''} ${match.isCancelled ? 'cancelled' : ''}" data-match-id="${match.id}">
@@ -799,7 +939,7 @@ function renderMatchCard(match) {
           <div class="mheader-badges">
             <span class="badge ${catBadgeClass}">${catDisplayName}</span>
             ${typeBadgeHtml}
-            <span class="badge badge-team-count">${match.teamCount}チーム</span>
+            ${teamCountBadgeHtml}
             ${autoMatchBadgeHtml}
             ${statusBadgeHtml}
             ${contactingBadgeHtml}
@@ -821,58 +961,9 @@ function renderMatchCard(match) {
           </div>
         </div>
 
-        <!-- ⚽ 対戦カード (VS表示) & 声掛けパイプライン進捗 -->
-        <div class="match-vs-container" data-action="toggle" data-match-id="${match.id}">
-          <div class="match-vs-header">
-            <span class="match-vs-label">⚽ 対戦カード</span>
-            <span style="font-size: 11px; color: var(--text-muted);">${match._expanded ? '▲ 閉じる' : '▼ 候補・詳細を見る'}</span>
-          </div>
-          <div class="match-vs-teams">
-            ${vsTeamsHtml}
-          </div>
+        ${vsContainerHtml}
 
-          <!-- 声掛け・返答状況サマリーチップ -->
-          <div class="candidate-summary-chips">
-            <div class="summary-chip chip-contacting" title="現在連絡中で返答待ちのチーム数">
-              <span class="chip-icon">💬</span>
-              <span class="chip-label">声掛け中</span>
-              <span class="chip-count">${contactingTeams.length}</span>
-            </div>
-            <div class="summary-chip chip-responded" title="返答をもらったチーム数（OK: ${okTeams.length} / NG: ${ngTeams.length}）">
-              <span class="chip-icon">📬</span>
-              <span class="chip-label">返答あり</span>
-              <span class="chip-count">${respondedCount}</span>
-              <span class="chip-sub">(${okTeams.length}OK / ${ngTeams.length}NG)</span>
-            </div>
-            <div class="summary-chip chip-uncontacted" title="まだ声掛けしていない候補チーム数">
-              <span class="chip-icon">📨</span>
-              <span class="chip-label">未連絡</span>
-              <span class="chip-count">${uncontactedTeams.length}</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="match-progress">
-          <div class="progress-info">
-            <span class="progress-label">確定進捗</span>
-            <span class="progress-count"><span class="ok-count">${okCount}</span> / ${needed}</span>
-          </div>
-          <div class="progress-bar">
-            <div class="progress-bar-fill ${isComplete ? 'complete' : ''}" style="width: ${progressPct}%"></div>
-          </div>
-        </div>
-        <div class="candidate-section">
-          <div class="candidate-list">
-            <div class="candidate-list-header">
-              <span class="candidate-list-title">対戦候補 (${match.candidates.length}件)</span>
-              <button class="btn-add-candidate" data-action="add-candidate" data-match-id="${match.id}">＋ 候補を追加</button>
-            </div>
-            ${match.candidates.length > 0
-      ? candidateRows
-      : '<div class="candidate-empty">まだ候補がありません</div>'
-    }
-          </div>
-        </div>
+        ${detailsSectionHtml}
       </div>
     `;
 }
@@ -1107,7 +1198,7 @@ function submitMatch(e) {
     time = dom.matchTimeManual.value.trim();
   }
   const locationId = dom.matchLocation.value;
-  const teamCount = parseInt(dom.matchTeamCount.value) || 2;
+  const teamCount = selectedType === '練習' ? 1 : (parseInt(dom.matchTeamCount.value) || 2);
   const isAutoMatch = dom.matchAutoMatch.checked;
   const isCancelled = dom.matchCancelled.checked;
 
@@ -2185,6 +2276,7 @@ function openParticipantsModal(matchId) {
   if (match.type === 'TM') typeLabel = '🤝 TM';
   else if (match.type === '中野区リーグ') typeLabel = '🏅 区リーグ';
   else if (match.type === 'ミニサッカー大会') typeLabel = '🏆 ミニサッカー';
+  else if (match.type === '練習') typeLabel = '🏃 練習';
   else typeLabel = `⚽ ${escapeHtml(match.type)}`;
 
   const loc = state.locations.find(l => l.id === match.locationId);

@@ -404,6 +404,12 @@ body::before {
   border: 1px solid rgba(245, 158, 11, 0.25);
 }
 
+.badge-practice {
+  background: rgba(6, 182, 212, 0.15);
+  color: #06b6d4;
+  border: 1px solid rgba(6, 182, 212, 0.3);
+}
+
 .badge-category-general {
   background: rgba(59, 130, 246, 0.15);
   color: #3b82f6;
@@ -1019,13 +1025,13 @@ body::before {
 
 /* Type Selector */
 .type-selector {
-  display: flex;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
 }
 
 .type-option {
-  flex: 1;
-  padding: 14px 16px;
+  padding: 12px 6px;
   background: var(--bg-input);
   border: 2px solid var(--border-light);
   border-radius: var(--radius-md);
@@ -1052,6 +1058,11 @@ body::before {
 .type-option.selected.league {
   border-color: #8b5cf6;
   background: rgba(139, 92, 246, 0.1);
+}
+
+.type-option.selected.practice {
+  border-color: #06b6d4;
+  background: rgba(6, 182, 212, 0.12);
 }
 
 .type-option-icon {
@@ -1828,7 +1839,8 @@ body::before {
 
   /* Type Selector in Mobile */
   .type-selector {
-    flex-direction: row;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
     gap: 8px;
   }
 
@@ -2381,5 +2393,151 @@ body::before {
   border-color: #cbd5e1;
   color: #475569;
 }
+
+/* 🏃 練習（対戦相手なし）カード用スタイル */
+.match-practice-banner {
+  margin: 8px 12px 10px;
+  padding: 10px 14px;
+  background: rgba(6, 182, 212, 0.08);
+  border: 1px solid rgba(6, 182, 212, 0.25);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.match-practice-banner:hover {
+  background: rgba(6, 182, 212, 0.14);
+  border-color: rgba(6, 182, 212, 0.4);
+}
+
+.practice-banner-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.practice-badge-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #06b6d4;
+}
+
+.practice-banner-note {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  background: rgba(0, 0, 0, 0.2);
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+}
+
+.practice-expanded-section {
+  padding: 12px 14px;
+  border-top: 1px solid var(--border-subtle);
+  background: var(--bg-card);
+}
+
+.practice-details-card {
+  background: var(--bg-secondary);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  padding: 12px 14px;
+}
+
+.practice-details-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: .05em;
+  margin-bottom: 8px;
+}
+
+.practice-details-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 8px;
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+
+.pdetail-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.pdetail-label {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.pdetail-val {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.practice-details-note {
+  font-size: 13px;
+  background: var(--bg-tertiary);
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 12px;
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+}
+
+.practice-action-row {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* 練習カード 日中モード対応 */
+[data-theme="light"] .badge-practice {
+  background: #0891b2;
+  color: #ffffff;
+  border-color: #0e7490;
+  font-weight: 700;
+}
+
+[data-theme="light"] .type-option.selected.practice {
+  border-color: #0891b2;
+  background: rgba(8, 145, 178, 0.15);
+}
+
+[data-theme="light"] .match-practice-banner {
+  background: #ecfeff;
+  border: 1.5px solid #0891b2;
+}
+
+[data-theme="light"] .match-practice-banner:hover {
+  background: #cffafe;
+}
+
+[data-theme="light"] .practice-badge-text {
+  color: #0e7490;
+}
+
+[data-theme="light"] .practice-banner-note {
+  background: #ffffff;
+  color: #334155;
+  border: 1px solid #cffafe;
+}
+
+[data-theme="light"] .practice-details-card {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+[data-theme="light"] .practice-details-note {
+  background: #ffffff;
+  border-color: #e2e8f0;
+  color: #1e293b;
+}
+
+
 
 
