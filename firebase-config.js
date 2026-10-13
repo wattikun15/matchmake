@@ -61,5 +61,6 @@ export async function logoutUser() {
 export const DB_PATHS = {
   DATA: 'matchboard/data',
   ALLOWED_USERS: 'matchboard/allowed_users',
-  META: 'matchboard/meta'
+  META: 'matchboard/meta',
+  BACKUP: 'matchboard/backup'
 };

@@ -141,15 +141,8 @@ function loadState() {
       if (!Array.isArray(state.members)) state.members = [];
     }
 
-    // マッチが空の場合、初期マスターデータを自動ロード
-    if (!state.matches || state.matches.length === 0) {
-      if (INITIAL_DATA && Array.isArray(INITIAL_DATA.matches) && INITIAL_DATA.matches.length > 0) {
-        state.matches = JSON.parse(JSON.stringify(INITIAL_DATA.matches));
-        if (state.teams.length === 0) state.teams = JSON.parse(JSON.stringify(INITIAL_DATA.teams || []));
-        if (state.locations.length === 0) state.locations = JSON.parse(JSON.stringify(INITIAL_DATA.locations || []));
-        if (state.members.length === 0) state.members = JSON.parse(JSON.stringify(INITIAL_DATA.members || []));
-      }
-    }
+    // 注意: ローカルが空の時に INITIAL_DATA を勝手に代入して現在時刻で保存しない！
+    // クラウド同期が完了するのを待ち、クラウドから最新マスターを取得する。
 
     let changed = false;
     if (!state.members) {
@@ -185,7 +178,12 @@ function loadState() {
         changed = true;
       }
     });
-    if (changed) saveState();
+    // 起動時の内部フォーマット補正で lastUpdated を更新したりクラウドへ上書き送信しない
+    if (changed) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      } catch (e) {}
+    }
   } catch (e) {
     console.warn('Failed to load state:', e);
   }
@@ -238,6 +236,12 @@ function saveState() {
 
 let saveToCloudTimeout = null;
 function saveToCloud(immediate = false) {
+  // 初回クラウドデータの受信が完了するまでは絶対にクラウドに書き込まない（古いデータによる上書き防止）
+  if (!isInitialCloudLoadDone) {
+    console.warn('Blocked saveToCloud: Initial cloud sync is not ready yet.');
+    return;
+  }
+
   updateSyncBadge('syncing');
   if (saveToCloudTimeout) clearTimeout(saveToCloudTimeout);
 
@@ -246,6 +250,23 @@ function saveToCloud(immediate = false) {
     try {
       normalizeState();
       const dataRef = ref(db, DB_PATHS.DATA);
+
+      // 安全策: 上書き前に直前のクラウドデータをバックアップ（消失防止）
+      try {
+        const snap = await get(dataRef);
+        const currentVal = snap.val();
+        if (currentVal && (currentVal.matches?.length > 0 || currentVal.teams?.length > 0)) {
+          const backupRef = ref(db, DB_PATHS.BACKUP);
+          await set(backupRef, {
+            ...currentVal,
+            backupTimestamp: Date.now(),
+            backedUpBy: currentUser ? currentUser.email : 'system'
+          });
+        }
+      } catch (backupErr) {
+        console.warn('Failed to create pre-save backup:', backupErr);
+      }
+
       await set(dataRef, {
         matches: state.matches || [],
         teams: state.teams || [],
@@ -297,21 +318,7 @@ function migrateLocationsV1() {
 function migrateTypesV1() {
   if (localStorage.getItem('migrated_types_v1')) return;
   localStorage.setItem('migrated_types_v1', 'true');
-
-  state.matches.forEach(match => {
-    const oldName = match.name || '';
-    let newType = 'TM';
-
-    if (oldName.includes('リーグ')) {
-      newType = '中野区リーグ';
-    } else if (match.type === '大会' || oldName.includes('大会')) {
-      newType = 'ミニサッカー大会';
-    }
-
-    match.type = newType;
-  });
-
-  saveState();
+  // 過去の移行用処理。起動時に全件書き換えてタイムスタンプを上書きしないよう無効化。
 }
 
 function importSchedule() {
@@ -2852,10 +2859,19 @@ function startCloudSync() {
     if (!cloudData) {
       if (!isInitialCloudLoadDone) {
         isInitialCloudLoadDone = true;
-        if ((state.matches && state.matches.length > 0) || (state.teams && state.teams.length > 0) || (state.locations && state.locations.length > 0) || (state.members && state.members.length > 0)) {
-          console.log('Migrating local data to cloud...');
-          saveToCloud();
-          showToast('既存のローカルデータをクラウドに同期しました', '☁️');
+        // クラウドが完全空の場合のみ初期シード
+        if ((state.matches && state.matches.length > 0) || (state.teams && state.teams.length > 0)) {
+          console.log('Migrating local data to cloud for the first time...');
+          saveToCloud(true);
+          showToast('初期データをクラウドに同期しました', '☁️');
+        } else if (INITIAL_DATA && Array.isArray(INITIAL_DATA.matches) && INITIAL_DATA.matches.length > 0) {
+          state.matches = JSON.parse(JSON.stringify(INITIAL_DATA.matches || []));
+          state.teams = JSON.parse(JSON.stringify(INITIAL_DATA.teams || []));
+          state.locations = JSON.parse(JSON.stringify(INITIAL_DATA.locations || []));
+          state.members = JSON.parse(JSON.stringify(INITIAL_DATA.members || []));
+          state.lastUpdated = Date.now();
+          saveToCloud(true);
+          render();
         }
       }
       return;
@@ -2863,17 +2879,16 @@ function startCloudSync() {
 
     if (isSavingToCloud) return;
 
+    // クラウドデータが存在する場合、初回は必ずクラウドを正（Source of Truth）としてローカルへ同期！
+    // 起動時の初期化やローカルのタイムスタンプ狂いによるクラウド破壊を防止。
+    isInitialCloudLoadDone = true;
+
     const cloudLastUpdated = cloudData.lastUpdated || 0;
     const localLastUpdated = state.lastUpdated || 0;
 
-    // ローカルの方が新しければ、古いクラウドデータで上書きせずクラウドへ最新保存する
-    if (localLastUpdated > cloudLastUpdated) {
-      console.log('Local data is newer than cloud. Re-saving to cloud...');
-      saveToCloud(true);
-      return;
-    }
+    // 既にローカルで初回同期が済んでおり、かつローカルが真に新しい場合の保護
+    // （※初回同期完了前の自動上書きは一切行わない）
 
-    isInitialCloudLoadDone = true;
     let hasChange = false;
     if (cloudData.matches) {
       let rawList = Array.isArray(cloudData.matches) ? cloudData.matches : Object.values(cloudData.matches);
@@ -2888,17 +2903,32 @@ function startCloudSync() {
         };
       });
       hasChange = true;
+    } else {
+      state.matches = [];
+      hasChange = true;
     }
+
     if (cloudData.teams) {
       state.teams = (Array.isArray(cloudData.teams) ? cloudData.teams : Object.values(cloudData.teams)).filter(Boolean);
       hasChange = true;
+    } else {
+      state.teams = [];
+      hasChange = true;
     }
+
     if (cloudData.locations) {
       state.locations = (Array.isArray(cloudData.locations) ? cloudData.locations : Object.values(cloudData.locations)).filter(Boolean);
       hasChange = true;
+    } else {
+      state.locations = [];
+      hasChange = true;
     }
+
     if (cloudData.members) {
       state.members = (Array.isArray(cloudData.members) ? cloudData.members : Object.values(cloudData.members)).filter(Boolean);
+      hasChange = true;
+    } else {
+      state.members = [];
       hasChange = true;
     }
 
@@ -2919,6 +2949,70 @@ function startCloudSync() {
     console.error('Cloud sync listen error:', err);
     updateSyncBadge('error');
   });
+}
+
+// ── Export / Import & Manual Sync ──
+function exportStateAsJson() {
+  normalizeState();
+  const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(state, null, 2));
+  const dlAnchor = document.createElement('a');
+  const now = new Date();
+  const dateStr = now.getFullYear() +
+    String(now.getMonth() + 1).padStart(2, '0') +
+    String(now.getDate()).padStart(2, '0') + '_' +
+    String(now.getHours()).padStart(2, '0') +
+    String(now.getMinutes()).padStart(2, '0');
+  dlAnchor.setAttribute('href', dataStr);
+  dlAnchor.setAttribute('download', `matchboard_backup_${dateStr}.json`);
+  document.body.appendChild(dlAnchor);
+  dlAnchor.click();
+  dlAnchor.remove();
+  showToast('JSONファイルを書き出しました', '📥');
+}
+
+function importStateFromJson(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const parsed = JSON.parse(e.target.result);
+      if (!parsed || (!Array.isArray(parsed.matches) && !Array.isArray(parsed.teams))) {
+        alert('無効なMatchBoardデータ形式です。');
+        return;
+      }
+      const matchCount = parsed.matches?.length || 0;
+      const teamCount = parsed.teams?.length || 0;
+      if (!confirm(`バックアップファイルを復元しますか？\nマッチ数: ${matchCount}件\nチーム数: ${teamCount}件\n※現在のデータは上書きされ、クラウドにも同期されます。`)) {
+        return;
+      }
+      state = { ...state, ...parsed };
+      normalizeState();
+      state.lastUpdated = Date.now();
+      isInitialCloudLoadDone = true;
+      saveState();
+      render();
+      showToast('バックアップデータを復元しました', '📤');
+    } catch (err) {
+      alert('ファイルの解析に失敗しました: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
+function forceUploadToCloud() {
+  if (!isAuthorized || !currentUser) {
+    alert('クラウド保存にはGoogleログイン権限が必要です。');
+    return;
+  }
+  const matchCount = state.matches?.length || 0;
+  const teamCount = state.teams?.length || 0;
+  if (!confirm(`この端末に保存されているデータ（マッチ: ${matchCount}件, チーム: ${teamCount}件）を強制的にクラウドへ上書き送信しますか？\n（他の端末にもこの内容が反映されます）`)) {
+    return;
+  }
+  isInitialCloudLoadDone = true;
+  state.lastUpdated = Date.now();
+  saveState();
+  showToast('クラウドへ強制同期を実行しました', '☁️');
 }
 
 function renderAllowedUsersList() {
@@ -3110,6 +3204,17 @@ function initAuthAndAccess() {
     const email = $('input-new-allowed-email').value;
     addAllowedUser(email);
   });
+
+  // データ移行・バックアップ
+  $('btn-export-json')?.addEventListener('click', exportStateAsJson);
+  $('input-import-json')?.addEventListener('change', (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      importStateFromJson(file);
+      e.target.value = '';
+    }
+  });
+  $('btn-force-upload-cloud')?.addEventListener('click', forceUploadToCloud);
 
   // 認証リスナー
   onAuthStateChanged(auth, async (user) => {
