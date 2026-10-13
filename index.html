@@ -17,7 +17,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <link rel="stylesheet" href="style.css?v=20261013_v14">
+  <link rel="stylesheet" href="style.css?v=20261013_v15">
 </head>
 <body>
 
@@ -190,7 +190,11 @@
           <!-- Team Count -->
           <div class="form-group" id="group-match-team-count">
             <label class="form-label" for="match-team-count">対戦チーム数</label>
-            <input type="number" class="form-input form-input-number" id="match-team-count" min="2" max="20" value="2" required>
+            <div class="team-count-stepper">
+              <button type="button" class="stepper-btn" id="btn-team-count-minus" aria-label="チーム数を減らす">−</button>
+              <input type="number" class="form-input form-input-number stepper-input" id="match-team-count" min="1" value="1" inputmode="numeric" required>
+              <button type="button" class="stepper-btn" id="btn-team-count-plus" aria-label="チーム数を増やす">＋</button>
+            </div>
           </div>
 
           <!-- Auto Match -->
@@ -737,7 +741,7 @@
     }
   </script>
 
-  <script type="module" src="app.js?v=20261013_v14"></script>
+  <script type="module" src="app.js?v=20261013_v15"></script>
 
   <!-- PWA Service Worker Registration -->
   <script>

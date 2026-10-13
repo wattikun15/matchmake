@@ -1023,6 +1023,52 @@ body::before {
   max-width: 100px;
 }
 
+/* Team Count Stepper */
+.team-count-stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.team-count-stepper .stepper-input {
+  width: 64px;
+  text-align: center;
+  font-size: 18px;
+  font-weight: 700;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.team-count-stepper .stepper-input::-webkit-outer-spin-button,
+.team-count-stepper .stepper-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.stepper-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md, 10px);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition: background .15s, transform .1s, border-color .15s;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.stepper-btn:hover {
+  border-color: var(--text-muted);
+}
+
+.stepper-btn:active {
+  transform: scale(.92);
+}
+
 /* Type Selector */
 .type-selector {
   display: grid;
@@ -2628,6 +2674,19 @@ body::before {
 }
 
 /* 候補行のワンタップステータス切替ボタングループ */
+
+/* Collapsible quick‑add list */
+.quick-add-collapsible {
+  margin-top: 4px;
+}
+.quick-add-header {
+  user-select: none;
+  cursor: pointer;
+}
+.quick-add-content {
+  margin-top: 4px;
+}
+
 .candidate-status-group {
   display: inline-flex;
   border-radius: var(--radius-md);

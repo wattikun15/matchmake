@@ -499,8 +499,7 @@ function updateMatchFormForType(type) {
     }
   } else {
     if (dom.matchTeamCount) {
-      if (parseInt(dom.matchTeamCount.value) < 2) dom.matchTeamCount.value = '2';
-      dom.matchTeamCount.min = '2';
+      dom.matchTeamCount.min = '1';
     }
     if (dom.groupMatchTeamCount) {
       dom.groupMatchTeamCount.style.display = '';
@@ -532,9 +531,31 @@ function initTypeSelector() {
         $('match-shinpad').checked = true;
       }
 
+      // デフォルトの対戦チーム数（ミニサッカー大会=3、その他=1）
+      if (dom.matchTeamCount) {
+        dom.matchTeamCount.value = String(getDefaultTeamCount(selectedType));
+      }
+
       updateMatchFormForType(selectedType);
     });
   });
+}
+
+function getDefaultTeamCount(type) {
+  return type === 'ミニサッカー大会' ? 3 : 1;
+}
+
+function initTeamCountStepper() {
+  const minus = $('btn-team-count-minus');
+  const plus = $('btn-team-count-plus');
+  const input = dom.matchTeamCount;
+  if (!input) return;
+  const step = (delta) => {
+    const current = parseInt(input.value) || 0;
+    input.value = String(Math.max(1, current + delta));
+  };
+  minus?.addEventListener('click', () => step(-1));
+  plus?.addEventListener('click', () => step(1));
 }
 
 function setTypeSelector(type) {
@@ -947,11 +968,29 @@ function renderMatchCard(match) {
                 if (availableTeams.length === 0) {
                   return '<span style="font-size:12px; color:var(--text-muted);">登録チームはすべて候補に追加済みです</span>';
                 }
-                return availableTeams.map(t => `
+                // Split into favorite (first 5) and other teams
+                const favoriteCount = 5;
+                const favoriteTeams = availableTeams.slice(0, favoriteCount);
+                const otherTeams = availableTeams.slice(favoriteCount);
+                const favHtml = favoriteTeams.map(t => `
                   <button type="button" class="quick-team-chip" data-action="quick-add-team" data-match-id="${match.id}" data-team-id="${t.id}" title="${escapeHtml(t.name)}を候補に追加">
                     ＋ ${escapeHtml(t.name)}
-                  </button>
-                `).join('');
+                  </button>`).join('');
+                const otherHtml = otherTeams.map(t => `
+                  <button type="button" class="quick-team-chip" data-action="quick-add-team" data-match-id="${match.id}" data-team-id="${t.id}" title="${escapeHtml(t.name)}を候補に追加">
+                    ＋ ${escapeHtml(t.name)}
+                  </button>`).join('');
+                const toggleId = `quick-add-toggle-${match.id}`;
+                const otherSection = otherTeams.length > 0 ? `
+                  <div class="quick-add-collapsible">
+                    <div class="quick-add-header" data-action="toggle-collapsible" data-target="${toggleId}" style="cursor:pointer; font-size:12px; color:var(--text-muted); margin-top:4px;">
+                      ⬇️ その他のチーム (${otherTeams.length})
+                    </div>
+                    <div id="${toggleId}" class="quick-add-content" style="display:none; margin-top:4px;">
+                      ${otherHtml}
+                    </div>
+                  </div>` : '';
+                return favHtml + otherSection;
               })()}
             </div>
             <div class="quick-add-custom-row">
@@ -1069,7 +1108,14 @@ function attachCardEvents() {
       case 'edit-match': openEditMatchModal(matchId); break;
       case 'delete-match': confirmDeleteMatch(matchId); break;
       case 'add-candidate': openAddCandidateModal(matchId); break;
-      case 'quick-add-team': quickAddTeamToMatch(matchId, btn.dataset.teamId); break;
+      case 'toggle-collapsible': {
+        const targetId = btn.dataset.target;
+        const el = document.getElementById(targetId);
+        if (el) {
+          el.style.display = el.style.display === 'none' ? 'block' : 'none';
+        }
+        break;
+      }
       case 'quick-add-custom-team': {
         const input = document.getElementById(`quick-team-input-${matchId}`);
         const name = input ? input.value.trim() : '';
@@ -1228,7 +1274,7 @@ function openCreateMatchModal() {
   dom.matchTimeManual.value = '';
   dom.matchTimeManual.style.display = 'none';
   populateMatchLocationSelect('');
-  dom.matchTeamCount.value = '2';
+  dom.matchTeamCount.value = String(getDefaultTeamCount('TM'));
   dom.matchAutoMatch.checked = false;
   dom.matchCancelled.checked = false;
   dom.groupMatchCancelled.style.display = 'none';
@@ -1323,7 +1369,7 @@ function submitMatch(e) {
     time = dom.matchTimeManual.value.trim();
   }
   const locationId = dom.matchLocation.value;
-  const teamCount = selectedType === '練習' ? 1 : (parseInt(dom.matchTeamCount.value) || 2);
+  const teamCount = selectedType === '練習' ? 1 : Math.max(1, parseInt(dom.matchTeamCount.value) || getDefaultTeamCount(selectedType));
   const isAutoMatch = dom.matchAutoMatch.checked;
   const isCancelled = dom.matchCancelled.checked;
 
@@ -1767,6 +1813,7 @@ function init() {
   migrateLocationsV1();
   migrateTypesV1();
   initTypeSelector();
+  initTeamCountStepper();
   initPastMatchesToggle();
   initThemeToggle();
   initAuthAndAccess();
