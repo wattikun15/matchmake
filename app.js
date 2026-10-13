@@ -774,11 +774,11 @@ function renderMatchCard(match) {
     let respondedSubText = '';
     if (respondedCount > 0) {
       if (okTeams.length > 0 && ngTeams.length > 0) {
-        respondedSubText = `<span class="chip-sub">(${okTeams.length}OK / ${ngTeams.length}NG)</span>`;
+        respondedSubText = `<span class="chip-sub">(OK ${okTeams.length} / NG ${ngTeams.length})</span>`;
       } else if (okTeams.length > 0) {
-        respondedSubText = `<span class="chip-sub">(${okTeams.length}OK)</span>`;
+        respondedSubText = `<span class="chip-sub">(OK ${okTeams.length})</span>`;
       } else if (ngTeams.length > 0) {
-        respondedSubText = `<span class="chip-sub">(${ngTeams.length}NG)</span>`;
+        respondedSubText = `<span class="chip-sub">(NG ${ngTeams.length})</span>`;
       }
     }
 
