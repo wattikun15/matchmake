@@ -866,7 +866,7 @@ function renderMatchCard(match) {
     typeBadgeHtml = `<span class="badge badge-league">⚽ ${escapeHtml(match.type)}</span>`;
   }
 
-  const teamCountBadgeHtml = isPractice ? '' : `<span class="badge badge-team-count">${match.teamCount}チーム</span>`;
+  const teamCountBadgeHtml = isPractice ? '' : `<span class="badge badge-team-count">対戦 ${match.teamCount}チーム</span>`;
   const autoMatchBadgeHtml = match.isAutoMatch ? `<span class="badge" style="background: var(--bg-tertiary); color: var(--text-muted); border-color: var(--border-subtle);">自動</span>` : '';
 
   let statusBadgeHtml = '';
@@ -922,14 +922,51 @@ function renderMatchCard(match) {
           </div>
         </div>
         <div class="candidate-section">
+          ${isComplete ? `
+            <div class="match-step-prompt">
+              <div class="step-prompt-text">
+                <span style="font-size: 18px;">🎉</span>
+                <span><strong>対戦チームが確定しました！</strong> 自チームの参加メンバーを調整しましょう</span>
+              </div>
+              <button type="button" class="btn-primary btn-step-action" data-action="manage-participants" data-match-id="${match.id}">
+                👥 メンバー出欠を調整 (${pStatusCounts['参加']}/${match.matchRecruitCount || '-'}名)
+              </button>
+            </div>
+          ` : ''}
+
+          <!-- ⚡ クイック候補ピッカー -->
+          <div class="candidate-quick-picker">
+            <div class="quick-picker-header">
+              <span class="quick-picker-title">⚡ クイック候補追加（タップで即追加）</span>
+              <button type="button" class="btn-icon" data-action="add-candidate" data-match-id="${match.id}" title="詳細条件を指定して追加" style="font-size:11px; padding: 2px 6px;">⚙️ 詳細追加</button>
+            </div>
+            <div class="quick-team-chips">
+              ${(() => {
+                const existingTeamIds = new Set(match.candidates.map(c => String(c.teamId)).filter(Boolean));
+                const availableTeams = state.teams.filter(t => !existingTeamIds.has(String(t.id)));
+                if (availableTeams.length === 0) {
+                  return '<span style="font-size:12px; color:var(--text-muted);">登録チームはすべて候補に追加済みです</span>';
+                }
+                return availableTeams.map(t => `
+                  <button type="button" class="quick-team-chip" data-action="quick-add-team" data-match-id="${match.id}" data-team-id="${t.id}" title="${escapeHtml(t.name)}を候補に追加">
+                    ＋ ${escapeHtml(t.name)}
+                  </button>
+                `).join('');
+              })()}
+            </div>
+            <div class="quick-add-custom-row">
+              <input type="text" class="quick-team-input" id="quick-team-input-${match.id}" placeholder="その他のチーム名を入力して即追加..." data-match-id="${match.id}">
+              <button type="button" class="btn-quick-add-custom" data-action="quick-add-custom-team" data-match-id="${match.id}">＋ 追加</button>
+            </div>
+          </div>
+
           <div class="candidate-list">
             <div class="candidate-list-header">
-              <span class="candidate-list-title">対戦候補 (${match.candidates.length}件)</span>
-              <button class="btn-add-candidate" data-action="add-candidate" data-match-id="${match.id}">＋ 候補を追加</button>
+              <span class="candidate-list-title">対戦候補チーム (${match.candidates.length}件)</span>
             </div>
             ${match.candidates.length > 0
               ? candidateRows
-              : '<div class="candidate-empty">まだ候補がありません</div>'
+              : '<div class="candidate-empty">まだ対戦候補がありません。上のボタンからチームを追加してください</div>'
             }
           </div>
         </div>
@@ -980,7 +1017,6 @@ function renderMatchCard(match) {
 }
 
 function renderCandidateItem(matchId, candidate) {
-  const statusClass = `status-${candidate.status}`;
   const noteHtml = candidate.note
     ? `<div class="candidate-note">📝 ${escapeHtml(candidate.note)}</div>`
     : '';
@@ -998,13 +1034,13 @@ function renderCandidateItem(matchId, candidate) {
           ${noteHtml}
         </div>
         <div class="candidate-actions">
-          <div class="status-dropdown">
-            <button class="status-badge ${statusClass}" data-action="toggle-status-menu" data-menu-id="status-menu-${candidate.id}" data-candidate-id="${candidate.id}" data-match-id="${matchId}">${candidate.status}</button>
-            <div class="status-dropdown-menu" id="status-menu-${candidate.id}">
-              ${STATUSES.map(s => `
-                <button class="status-dropdown-item ${s === candidate.status ? 'active' : ''}" data-action="set-status" data-status="${s}" data-candidate-id="${candidate.id}" data-match-id="${matchId}">${s}</button>
-              `).join('')}
-            </div>
+          <!-- ⚡ 1タップで切り替わるステータスボタングループ -->
+          <div class="candidate-status-group">
+            ${STATUSES.map(s => `
+              <button type="button" class="cstatus-btn ${candidate.status === s ? 'active status-' + s : ''}" data-action="set-status" data-status="${s}" data-candidate-id="${candidate.id}" data-match-id="${matchId}">
+                ${s === 'OK' ? '✅ OK' : (s === 'NG' ? '❌ NG' : s)}
+              </button>
+            `).join('')}
           </div>
           <button class="btn-icon primary" data-action="view-team-schedule" data-team-id="${candidate.teamId}" title="スケジュールを見る">📅</button>
           <button class="btn-icon" data-action="edit-candidate" data-candidate-id="${candidate.id}" data-match-id="${matchId}" title="編集">✏️</button>
@@ -1033,6 +1069,16 @@ function attachCardEvents() {
       case 'edit-match': openEditMatchModal(matchId); break;
       case 'delete-match': confirmDeleteMatch(matchId); break;
       case 'add-candidate': openAddCandidateModal(matchId); break;
+      case 'quick-add-team': quickAddTeamToMatch(matchId, btn.dataset.teamId); break;
+      case 'quick-add-custom-team': {
+        const input = document.getElementById(`quick-team-input-${matchId}`);
+        const name = input ? input.value.trim() : '';
+        if (name) {
+          quickAddCustomTeamToMatch(matchId, name);
+          if (input) input.value = '';
+        }
+        break;
+      }
       case 'toggle-status-menu': toggleStatusMenu(btn.dataset.menuId); break;
       case 'set-status': setStatus(matchId, candidateId, btn.dataset.status); break;
       case 'edit-candidate': openEditCandidateModal(matchId, candidateId); break;
@@ -1041,6 +1087,74 @@ function attachCardEvents() {
       case 'manage-participants': openParticipantsModal(matchId); break;
     }
   };
+
+  dom.matchGrid.onkeydown = (e) => {
+    if (e.key === 'Enter' && e.target.classList.contains('quick-team-input')) {
+      e.preventDefault();
+      const matchId = e.target.dataset.matchId;
+      const name = e.target.value.trim();
+      if (name) {
+        quickAddCustomTeamToMatch(matchId, name);
+        e.target.value = '';
+      }
+    }
+  };
+}
+
+function quickAddTeamToMatch(matchId, teamId) {
+  const match = state.matches.find(m => String(m.id) === String(matchId));
+  if (!match) return;
+  normalizeMatch(match);
+  const team = state.teams.find(t => String(t.id) === String(teamId));
+  if (!team) return;
+
+  match.candidates.push({
+    id: generateId(),
+    teamId: team.id,
+    teamName: team.name,
+    affiliation: team.affiliation || '',
+    category: team.category === '両方' ? (match.category || '一般') : team.category,
+    status: '未連絡',
+    note: '',
+    updatedAt: todayString()
+  });
+
+  saveState();
+  showToast(`「${team.name}」を候補に追加しました`, '🎉');
+  render();
+}
+
+function quickAddCustomTeamToMatch(matchId, customTeamName) {
+  const match = state.matches.find(m => String(m.id) === String(matchId));
+  if (!match) return;
+  normalizeMatch(match);
+
+  let team = state.teams.find(t => t.name.toLowerCase() === customTeamName.toLowerCase());
+  if (!team) {
+    team = {
+      id: generateId(),
+      name: customTeamName,
+      affiliation: '',
+      category: match.category || '一般',
+      createdAt: todayString()
+    };
+    state.teams.push(team);
+  }
+
+  match.candidates.push({
+    id: generateId(),
+    teamId: team.id,
+    teamName: team.name,
+    affiliation: team.affiliation || '',
+    category: team.category || '一般',
+    status: '未連絡',
+    note: '',
+    updatedAt: todayString()
+  });
+
+  saveState();
+  showToast(`「${team.name}」を候補に追加しました`, '🎉');
+  render();
 }
 
 function toggleCard(matchId) {
