@@ -1689,6 +1689,194 @@ function populateCandidateTeamSelect(matchCategory, selectedTeamId = '') {
   });
 }
 
+// ── Candidate Team Search (検索＋候補表示) ──
+// ひらがな/カタカナ・全角/半角・大文字/小文字・空白の違いを無視して比較する
+function normalizeForSearch(str) {
+  return String(str || '')
+    .normalize('NFKC')
+    .toLowerCase()
+    .replace(/[\u30a1-\u30f6]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0x60))
+    .replace(/[\s・･\-ー]/g, '');
+}
+
+const teamSearch = { activeIndex: -1, items: [] };
+
+function getSelectableTeams() {
+  return Array.from(dom.candidateTeamSelect.querySelectorAll('option'))
+    .filter(opt => opt.value)
+    .map(opt => state.teams.find(t => t.id === opt.value))
+    .filter(Boolean);
+}
+
+function renderTeamSuggestions() {
+  const input = $('candidate-team-search');
+  const list = $('candidate-team-suggest');
+  if (!input || !list) return;
+
+  const query = normalizeForSearch(input.value);
+  const teams = getSelectableTeams();
+  let matched = teams;
+  if (query) {
+    matched = teams
+      .map(t => {
+        const name = normalizeForSearch(t.name);
+        const affil = normalizeForSearch(t.affiliation);
+        let score = -1;
+        if (name.startsWith(query)) score = 0;
+        else if (name.includes(query)) score = 1;
+        else if (affil.includes(query)) score = 2;
+        return { t, score };
+      })
+      .filter(x => x.score >= 0)
+      .sort((a, b) => a.score - b.score)
+      .map(x => x.t);
+  }
+
+  teamSearch.items = matched;
+  teamSearch.activeIndex = matched.length > 0 && query ? 0 : -1;
+  list.innerHTML = '';
+
+  if (teams.length === 0) {
+    const li = document.createElement('li');
+    li.className = 'team-suggest-empty';
+    li.textContent = state.teams.length === 0
+      ? '※先にチーム管理から登録してください'
+      : '※このマッチに出場できるチームがいません';
+    list.appendChild(li);
+  } else if (matched.length === 0) {
+    const li = document.createElement('li');
+    li.className = 'team-suggest-empty';
+    li.textContent = '該当するチームがありません（チーム管理から登録してください）';
+    list.appendChild(li);
+  } else {
+    matched.forEach((team, idx) => {
+      const li = document.createElement('li');
+      li.className = 'team-suggest-item' + (idx === teamSearch.activeIndex ? ' active' : '');
+      li.setAttribute('role', 'option');
+      li.dataset.teamId = team.id;
+
+      const name = document.createElement('span');
+      name.className = 'team-suggest-name';
+      name.textContent = team.name;
+      li.appendChild(name);
+
+      if (team.affiliation) {
+        const affil = document.createElement('span');
+        affil.className = 'team-suggest-affil';
+        affil.textContent = team.affiliation;
+        li.appendChild(affil);
+      }
+
+      const cat = document.createElement('span');
+      const catName = team.category || '一般';
+      cat.className = 'team-suggest-cat cat-' + (catName === 'シニア' ? 'senior' : catName === '両方' ? 'both' : 'general');
+      cat.textContent = catName;
+      li.appendChild(cat);
+
+      // mousedownで確定（blurより先に処理するため）
+      li.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        selectCandidateTeam(team.id);
+      });
+      list.appendChild(li);
+    });
+  }
+
+  list.classList.add('show');
+  input.setAttribute('aria-expanded', 'true');
+}
+
+function hideTeamSuggestions() {
+  $('candidate-team-suggest')?.classList.remove('show');
+  $('candidate-team-search')?.setAttribute('aria-expanded', 'false');
+}
+
+function selectCandidateTeam(teamId) {
+  const team = state.teams.find(t => t.id === teamId);
+  const input = $('candidate-team-search');
+  dom.candidateTeamSelect.value = teamId || '';
+  dom.candidateTeamSelect.dispatchEvent(new Event('change'));
+  if (input) {
+    input.value = team ? team.name : '';
+    input.classList.toggle('has-selection', !!team);
+  }
+  hideTeamSuggestions();
+}
+
+function syncCandidateTeamSearch() {
+  const input = $('candidate-team-search');
+  if (!input) return;
+  const team = state.teams.find(t => t.id === dom.candidateTeamSelect.value);
+  input.value = team ? team.name : '';
+  input.classList.toggle('has-selection', !!team);
+  hideTeamSuggestions();
+}
+
+function initCandidateTeamSearch() {
+  const input = $('candidate-team-search');
+  const clear = $('candidate-team-clear');
+  const list = $('candidate-team-suggest');
+  if (!input || !list) return;
+
+  input.addEventListener('focus', () => {
+    // 選択済みの状態でタップしたら全選択して打ち直しやすくする
+    if (input.classList.contains('has-selection')) input.select();
+    renderTeamSuggestions();
+  });
+
+  input.addEventListener('input', () => {
+    // 文字を編集したら選択を解除
+    if (dom.candidateTeamSelect.value) {
+      dom.candidateTeamSelect.value = '';
+      dom.candidateTeamSelect.dispatchEvent(new Event('change'));
+    }
+    input.classList.remove('has-selection');
+    renderTeamSuggestions();
+  });
+
+  input.addEventListener('keydown', (e) => {
+    const items = list.querySelectorAll('.team-suggest-item');
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      if (!list.classList.contains('show')) renderTeamSuggestions();
+      if (items.length === 0) return;
+      e.preventDefault();
+      const delta = e.key === 'ArrowDown' ? 1 : -1;
+      teamSearch.activeIndex = (teamSearch.activeIndex + delta + items.length) % items.length;
+      items.forEach((el, i) => el.classList.toggle('active', i === teamSearch.activeIndex));
+      items[teamSearch.activeIndex]?.scrollIntoView({ block: 'nearest' });
+    } else if (e.key === 'Enter') {
+      if (list.classList.contains('show') && teamSearch.items.length > 0) {
+        e.preventDefault();
+        const idx = teamSearch.activeIndex >= 0 ? teamSearch.activeIndex : 0;
+        selectCandidateTeam(teamSearch.items[idx].id);
+      }
+    } else if (e.key === 'Escape') {
+      if (list.classList.contains('show')) {
+        e.preventDefault();
+        e.stopPropagation();
+        hideTeamSuggestions();
+      }
+    }
+  });
+
+  input.addEventListener('blur', () => {
+    setTimeout(() => {
+      hideTeamSuggestions();
+      // 未確定のまま離れた場合、完全一致するチームが1つだけなら自動で確定
+      if (!dom.candidateTeamSelect.value && input.value.trim()) {
+        const q = normalizeForSearch(input.value);
+        const exact = getSelectableTeams().filter(t => normalizeForSearch(t.name) === q);
+        if (exact.length === 1) selectCandidateTeam(exact[0].id);
+      }
+    }, 120);
+  });
+
+  clear?.addEventListener('click', () => {
+    selectCandidateTeam('');
+    input.focus();
+  });
+}
+
 function openAddCandidateModal(matchId) {
   const match = state.matches.find(m => String(m.id) === String(matchId));
   if (!match) return;
@@ -1698,6 +1886,7 @@ function openAddCandidateModal(matchId) {
   dom.candidateId.value = '';
   dom.formCandidate.reset();
   populateCandidateTeamSelect(match.category || '一般');
+  syncCandidateTeamSearch();
 
   dom.groupCandidateParticipation.style.display = 'none';
   if (dom.candidateParticipationRadios.length > 0) dom.candidateParticipationRadios[0].checked = true;
@@ -1718,6 +1907,7 @@ function openEditCandidateModal(matchId, candidateId) {
   dom.candidateId.value = candidateId;
 
   populateCandidateTeamSelect(match.category || '一般', candidate.teamId);
+  syncCandidateTeamSearch();
   dom.candidateNote.value = candidate.note || '';
 
   const team = state.teams.find(t => t.id === candidate.teamId);
@@ -1744,7 +1934,8 @@ function submitCandidate(e) {
   const note = dom.candidateNote.value.trim();
 
   if (!teamId) {
-    alert('チームを選択してください。リストにない場合は「チーム管理」から追加してください。');
+    alert('チームを候補一覧から選択してください。リストにない場合は「チーム管理」から追加してください。');
+    $('candidate-team-search')?.focus();
     return;
   }
 
@@ -1883,6 +2074,7 @@ function init() {
       dom.groupCandidateParticipation.style.display = 'none';
     }
   });
+  initCandidateTeamSearch();
 
   dom.btnCopyTeamSchedule?.addEventListener('click', copyTeamSchedule);
   dom.btnCopyMemberSchedule?.addEventListener('click', copyMemberSchedule);

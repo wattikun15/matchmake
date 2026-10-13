@@ -17,7 +17,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <link rel="stylesheet" href="style.css?v=20261013_v15">
+  <link rel="stylesheet" href="style.css?v=20261013_v16">
 </head>
 <body>
 
@@ -287,10 +287,16 @@
           <input type="hidden" id="candidate-match-id" value="">
           <input type="hidden" id="candidate-id" value="">
 
-          <!-- Team Select -->
+          <!-- Team Select (search + suggestions) -->
           <div class="form-group">
-            <label class="form-label" for="candidate-team-select">チームを選択</label>
-            <select class="form-select" id="candidate-team-select" required>
+            <label class="form-label" for="candidate-team-search">チームを選択</label>
+            <div class="team-search-box">
+              <span class="team-search-icon" aria-hidden="true">🔍</span>
+              <input type="text" class="form-input team-search-input" id="candidate-team-search" placeholder="チーム名の一部を入力（例: ふじ）" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="candidate-team-suggest">
+              <button type="button" class="team-search-clear" id="candidate-team-clear" aria-label="入力をクリア">✕</button>
+            </div>
+            <ul class="team-suggest-list" id="candidate-team-suggest" role="listbox"></ul>
+            <select class="form-select" id="candidate-team-select" hidden>
               <option value="" disabled selected>チームを選択してください</option>
             </select>
           </div>
@@ -741,7 +747,7 @@
     }
   </script>
 
-  <script type="module" src="app.js?v=20261013_v15"></script>
+  <script type="module" src="app.js?v=20261013_v16"></script>
 
   <!-- PWA Service Worker Registration -->
   <script>

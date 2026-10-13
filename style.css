@@ -1069,6 +1069,132 @@ body::before {
   transform: scale(.92);
 }
 
+/* Team Search (候補チーム検索) */
+.team-search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.team-search-icon {
+  position: absolute;
+  left: 12px;
+  font-size: 14px;
+  opacity: .6;
+  pointer-events: none;
+}
+
+.team-search-input {
+  width: 100%;
+  padding-left: 36px !important;
+  padding-right: 40px !important;
+  font-size: 16px; /* iOSでのズーム防止 */
+}
+
+.team-search-input.has-selection {
+  font-weight: 700;
+  border-color: var(--accent-primary);
+}
+
+.team-search-clear {
+  position: absolute;
+  right: 6px;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.team-search-clear:hover {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.team-suggest-list {
+  display: none;
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 4px;
+  max-height: 260px;
+  overflow-y: auto;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md, 10px);
+  background: var(--bg-secondary);
+  -webkit-overflow-scrolling: touch;
+}
+
+.team-suggest-list.show {
+  display: block;
+  animation: suggestFadeIn .12s ease-out;
+}
+
+@keyframes suggestFadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.team-suggest-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  min-height: 44px;
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--text-primary);
+  transition: background .1s;
+}
+
+.team-suggest-item:hover,
+.team-suggest-item.active {
+  background: var(--bg-input);
+}
+
+.team-suggest-name {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.team-suggest-affil {
+  font-size: 12px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.team-suggest-cat {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(96, 165, 250, .15);
+  color: #60a5fa;
+}
+
+.team-suggest-cat.cat-senior {
+  background: rgba(251, 146, 60, .15);
+  color: #fb923c;
+}
+
+.team-suggest-cat.cat-both {
+  background: rgba(167, 139, 250, .15);
+  color: #a78bfa;
+}
+
+.team-suggest-empty {
+  padding: 12px;
+  font-size: 13px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
 /* Type Selector */
 .type-selector {
   display: grid;
