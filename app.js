@@ -964,11 +964,11 @@ function renderMatchCard(match) {
           <div class="candidate-list">
             <div class="candidate-list-header">
               <span class="candidate-list-title">対戦候補チーム (${match.candidates.length}件)</span>
-              <button type="button" class="btn-add-candidate" data-action="add-candidate" data-match-id="${match.id}">＋ 候補追加</button>
+              <button type="button" class="btn-add-candidate" data-action="add-candidate" data-match-id="${match.id}">＋ 追加</button>
             </div>
             ${match.candidates.length > 0
               ? candidateRows
-              : '<div class="candidate-empty">まだ対戦候補がありません。「＋ 候補追加」からチームを追加してください</div>'
+              : '<div class="candidate-empty">まだ対戦候補がありません。「＋ 追加」からチームを追加してください</div>'
             }
           </div>
         </div>
@@ -1787,25 +1787,49 @@ function normalizeForSearch(str) {
     .replace(/[\s・･\-ー]/g, '');
 }
 
-const teamSearch = { activeIndex: -1, items: [] };
+// ── Candidate Team Multi-Select (複数チームをチェックで一括追加) ──
+const candidateSelectedTeamIds = new Set();
 
-function getSelectableTeams() {
-  return Array.from(dom.candidateTeamSelect.querySelectorAll('option'))
-    .filter(opt => opt.value)
-    .map(opt => state.teams.find(t => t.id === opt.value))
-    .filter(Boolean);
+function updateCandidateSelectedCount() {
+  const count = candidateSelectedTeamIds.size;
+  const countEl = $('candidate-selected-count');
+  if (countEl) countEl.textContent = count;
+  if (dom.btnSubmitCandidate) {
+    dom.btnSubmitCandidate.textContent = count > 0 ? `${count}チームを追加` : '追加';
+  }
 }
 
-function renderTeamSuggestions() {
+function renderCandidateTeamCheckboxes(matchId) {
+  const match = state.matches.find(m => String(m.id) === String(matchId));
+  if (!match) return;
+
   const input = $('candidate-team-search');
   const list = $('candidate-team-suggest');
-  if (!input || !list) return;
+  if (!list) return;
 
-  const query = normalizeForSearch(input.value);
-  const teams = getSelectableTeams();
-  let matched = teams;
+  const chkIppan = $('candidate-filter-ippan');
+  const chkSenior = $('candidate-filter-senior');
+  const showIppan = chkIppan ? chkIppan.checked : true;
+  const showSenior = chkSenior ? chkSenior.checked : true;
+
+  const query = normalizeForSearch(input ? input.value : '');
+
+  // すでに追加されているチームのID
+  const existingTeamIds = new Set(match.candidates.map(c => String(c.teamId)).filter(Boolean));
+
+  // カテゴリー絞り込み
+  let availableTeams = state.teams.filter(t => {
+    const cat = t.category || '一般';
+    if (cat === '両方') return showIppan || showSenior;
+    if (cat === 'シニア') return showSenior;
+    if (cat === '一般') return showIppan;
+    return showIppan;
+  });
+
+  // 検索クエリによる絞り込み
+  let matched = availableTeams;
   if (query) {
-    matched = teams
+    matched = availableTeams
       .map(t => {
         const name = normalizeForSearch(t.name);
         const affil = normalizeForSearch(t.affiliation);
@@ -1820,148 +1844,127 @@ function renderTeamSuggestions() {
       .map(x => x.t);
   }
 
-  teamSearch.items = matched;
-  teamSearch.activeIndex = matched.length > 0 && query ? 0 : -1;
   list.innerHTML = '';
 
-  if (teams.length === 0) {
+  if (state.teams.length === 0) {
     const li = document.createElement('li');
     li.className = 'team-suggest-empty';
-    li.textContent = state.teams.length === 0
-      ? '※先にチーム管理から登録してください'
-      : '※このマッチに出場できるチームがいません';
+    li.textContent = '※先に「チーム管理」から登録してください';
     list.appendChild(li);
-  } else if (matched.length === 0) {
+    return;
+  }
+
+  if (!showIppan && !showSenior) {
     const li = document.createElement('li');
     li.className = 'team-suggest-empty';
-    li.textContent = '該当するチームがありません（チーム管理から登録してください）';
+    li.textContent = '※カテゴリー（一般・シニア）のチェックを入れてください';
     list.appendChild(li);
-  } else {
-    matched.forEach((team, idx) => {
-      const li = document.createElement('li');
-      li.className = 'team-suggest-item' + (idx === teamSearch.activeIndex ? ' active' : '');
-      li.setAttribute('role', 'option');
-      li.dataset.teamId = team.id;
+    return;
+  }
 
-      const name = document.createElement('span');
-      name.className = 'team-suggest-name';
-      name.textContent = team.name;
-      li.appendChild(name);
+  if (availableTeams.length === 0) {
+    const li = document.createElement('li');
+    li.className = 'team-suggest-empty';
+    li.textContent = '※該当するカテゴリーのチームがいません';
+    list.appendChild(li);
+    return;
+  }
 
-      if (team.affiliation) {
-        const affil = document.createElement('span');
-        affil.className = 'team-suggest-affil';
-        affil.textContent = team.affiliation;
-        li.appendChild(affil);
-      }
+  if (matched.length === 0) {
+    const li = document.createElement('li');
+    li.className = 'team-suggest-empty';
+    li.textContent = '該当するチームがありません';
+    list.appendChild(li);
+    return;
+  }
 
-      const cat = document.createElement('span');
-      const catName = team.category || '一般';
-      cat.className = 'team-suggest-cat cat-' + (catName === 'シニア' ? 'senior' : catName === '両方' ? 'both' : 'general');
-      cat.textContent = catName;
-      li.appendChild(cat);
+  matched.forEach(team => {
+    const isAlreadyAdded = existingTeamIds.has(String(team.id));
+    const isChecked = candidateSelectedTeamIds.has(String(team.id));
 
-      // mousedownで確定（blurより先に処理するため）
-      li.addEventListener('mousedown', (e) => {
-        e.preventDefault();
-        selectCandidateTeam(team.id);
+    const li = document.createElement('li');
+    li.className = 'team-suggest-item team-checkbox-item' +
+      (isChecked ? ' selected' : '') +
+      (isAlreadyAdded ? ' already-added' : '');
+    li.dataset.teamId = team.id;
+
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.className = 'team-multi-checkbox';
+    checkbox.value = team.id;
+    checkbox.checked = isChecked;
+    checkbox.disabled = isAlreadyAdded;
+
+    const infoWrap = document.createElement('div');
+    infoWrap.style.cssText = 'display:flex; align-items:center; gap:8px; flex:1; min-width:0;';
+
+    const catBadge = getCategoryBadge(team.category || '一般');
+    const affilHtml = team.affiliation ? `<span class="team-suggest-affil">(${escapeHtml(team.affiliation)})</span>` : '';
+    const addedTagHtml = isAlreadyAdded ? `<span style="font-size:11px; color:var(--text-muted); margin-left:auto;">追加済み</span>` : '';
+
+    infoWrap.innerHTML = `${catBadge}<span class="team-suggest-name">${escapeHtml(team.name)}</span>${affilHtml}${addedTagHtml}`;
+
+    li.appendChild(checkbox);
+    li.appendChild(infoWrap);
+
+    if (!isAlreadyAdded) {
+      li.addEventListener('click', (e) => {
+        if (e.target !== checkbox) {
+          checkbox.checked = !checkbox.checked;
+        }
+        if (checkbox.checked) {
+          candidateSelectedTeamIds.add(String(team.id));
+          li.classList.add('selected');
+        } else {
+          candidateSelectedTeamIds.delete(String(team.id));
+          li.classList.remove('selected');
+        }
+        updateCandidateSelectedCount();
       });
-      list.appendChild(li);
-    });
-  }
+    }
 
-  list.classList.add('show');
-  input.setAttribute('aria-expanded', 'true');
-}
-
-function hideTeamSuggestions() {
-  $('candidate-team-suggest')?.classList.remove('show');
-  $('candidate-team-search')?.setAttribute('aria-expanded', 'false');
-}
-
-function selectCandidateTeam(teamId) {
-  const team = state.teams.find(t => t.id === teamId);
-  const input = $('candidate-team-search');
-  dom.candidateTeamSelect.value = teamId || '';
-  dom.candidateTeamSelect.dispatchEvent(new Event('change'));
-  if (input) {
-    input.value = team ? team.name : '';
-    input.classList.toggle('has-selection', !!team);
-  }
-  hideTeamSuggestions();
-}
-
-function syncCandidateTeamSearch() {
-  const input = $('candidate-team-search');
-  if (!input) return;
-  const team = state.teams.find(t => t.id === dom.candidateTeamSelect.value);
-  input.value = team ? team.name : '';
-  input.classList.toggle('has-selection', !!team);
-  hideTeamSuggestions();
+    list.appendChild(li);
+  });
 }
 
 function initCandidateTeamSearch() {
   const input = $('candidate-team-search');
   const clear = $('candidate-team-clear');
-  const list = $('candidate-team-suggest');
-  if (!input || !list) return;
+  const clearSelectionBtn = $('btn-candidate-clear-selection');
+  const chkIppan = $('candidate-filter-ippan');
+  const chkSenior = $('candidate-filter-senior');
 
-  input.addEventListener('focus', () => {
-    // 選択済みの状態でタップしたら全選択して打ち直しやすくする
-    if (input.classList.contains('has-selection')) input.select();
-    renderTeamSuggestions();
+  chkIppan?.addEventListener('change', () => {
+    const matchId = dom.candidateMatchId.value;
+    renderCandidateTeamCheckboxes(matchId);
   });
 
-  input.addEventListener('input', () => {
-    // 文字を編集したら選択を解除
-    if (dom.candidateTeamSelect.value) {
-      dom.candidateTeamSelect.value = '';
-      dom.candidateTeamSelect.dispatchEvent(new Event('change'));
-    }
-    input.classList.remove('has-selection');
-    renderTeamSuggestions();
+  chkSenior?.addEventListener('change', () => {
+    const matchId = dom.candidateMatchId.value;
+    renderCandidateTeamCheckboxes(matchId);
   });
 
-  input.addEventListener('keydown', (e) => {
-    const items = list.querySelectorAll('.team-suggest-item');
-    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-      if (!list.classList.contains('show')) renderTeamSuggestions();
-      if (items.length === 0) return;
-      e.preventDefault();
-      const delta = e.key === 'ArrowDown' ? 1 : -1;
-      teamSearch.activeIndex = (teamSearch.activeIndex + delta + items.length) % items.length;
-      items.forEach((el, i) => el.classList.toggle('active', i === teamSearch.activeIndex));
-      items[teamSearch.activeIndex]?.scrollIntoView({ block: 'nearest' });
-    } else if (e.key === 'Enter') {
-      if (list.classList.contains('show') && teamSearch.items.length > 0) {
-        e.preventDefault();
-        const idx = teamSearch.activeIndex >= 0 ? teamSearch.activeIndex : 0;
-        selectCandidateTeam(teamSearch.items[idx].id);
-      }
-    } else if (e.key === 'Escape') {
-      if (list.classList.contains('show')) {
-        e.preventDefault();
-        e.stopPropagation();
-        hideTeamSuggestions();
-      }
-    }
+  input?.addEventListener('focus', () => {
+    const matchId = dom.candidateMatchId.value;
+    renderCandidateTeamCheckboxes(matchId);
   });
 
-  input.addEventListener('blur', () => {
-    setTimeout(() => {
-      hideTeamSuggestions();
-      // 未確定のまま離れた場合、完全一致するチームが1つだけなら自動で確定
-      if (!dom.candidateTeamSelect.value && input.value.trim()) {
-        const q = normalizeForSearch(input.value);
-        const exact = getSelectableTeams().filter(t => normalizeForSearch(t.name) === q);
-        if (exact.length === 1) selectCandidateTeam(exact[0].id);
-      }
-    }, 120);
+  input?.addEventListener('input', () => {
+    const matchId = dom.candidateMatchId.value;
+    renderCandidateTeamCheckboxes(matchId);
   });
 
   clear?.addEventListener('click', () => {
-    selectCandidateTeam('');
-    input.focus();
+    if (input) input.value = '';
+    const matchId = dom.candidateMatchId.value;
+    renderCandidateTeamCheckboxes(matchId);
+  });
+
+  clearSelectionBtn?.addEventListener('click', () => {
+    candidateSelectedTeamIds.clear();
+    updateCandidateSelectedCount();
+    const matchId = dom.candidateMatchId.value;
+    renderCandidateTeamCheckboxes(matchId);
   });
 }
 
@@ -1970,14 +1973,30 @@ function openAddCandidateModal(matchId) {
   if (!match) return;
   normalizeMatch(match);
 
+  candidateSelectedTeamIds.clear();
   dom.candidateMatchId.value = matchId;
   dom.candidateId.value = '';
-  dom.formCandidate.reset();
-  populateCandidateTeamSelect(match.category || '一般');
-  syncCandidateTeamSearch();
 
-  dom.groupCandidateParticipation.style.display = 'none';
-  if (dom.candidateParticipationRadios.length > 0) dom.candidateParticipationRadios[0].checked = true;
+  const input = $('candidate-team-search');
+  if (input) input.value = '';
+
+  const chkIppan = $('candidate-filter-ippan');
+  const chkSenior = $('candidate-filter-senior');
+  if (chkIppan && chkSenior) {
+    if (match.category === 'シニア') {
+      chkIppan.checked = false;
+      chkSenior.checked = true;
+    } else if (match.category === '一般') {
+      chkIppan.checked = true;
+      chkSenior.checked = false;
+    } else {
+      chkIppan.checked = true;
+      chkSenior.checked = true;
+    }
+  }
+
+  updateCandidateSelectedCount();
+  renderCandidateTeamCheckboxes(matchId);
 
   dom.modalCandidateTitle.textContent = '対戦候補を追加';
   dom.btnSubmitCandidate.textContent = '追加';
@@ -1991,23 +2010,23 @@ function openEditCandidateModal(matchId, candidateId) {
   const candidate = match.candidates.find(c => String(c.id) === String(candidateId));
   if (!candidate) return;
 
+  candidateSelectedTeamIds.clear();
+  candidateSelectedTeamIds.add(String(candidate.teamId));
   dom.candidateMatchId.value = matchId;
   dom.candidateId.value = candidateId;
 
-  populateCandidateTeamSelect(match.category || '一般', candidate.teamId);
-  syncCandidateTeamSearch();
-  dom.candidateNote.value = candidate.note || '';
+  const input = $('candidate-team-search');
+  if (input) input.value = '';
 
-  const team = state.teams.find(t => t.id === candidate.teamId);
-  if (team && team.category === '両方') {
-    dom.groupCandidateParticipation.style.display = 'block';
-    const radios = Array.from(dom.candidateParticipationRadios);
-    const targetRadio = radios.find(r => r.value === candidate.category);
-    if (targetRadio) targetRadio.checked = true;
-    else if (radios.length > 0) radios[0].checked = true;
-  } else {
-    dom.groupCandidateParticipation.style.display = 'none';
+  const chkIppan = $('candidate-filter-ippan');
+  const chkSenior = $('candidate-filter-senior');
+  if (chkIppan && chkSenior) {
+    chkIppan.checked = true;
+    chkSenior.checked = true;
   }
+
+  updateCandidateSelectedCount();
+  renderCandidateTeamCheckboxes(matchId);
 
   dom.modalCandidateTitle.textContent = '候補を編集';
   dom.btnSubmitCandidate.textContent = '更新';
@@ -2017,57 +2036,51 @@ function openEditCandidateModal(matchId, candidateId) {
 function submitCandidate(e) {
   e.preventDefault();
   const matchId = dom.candidateMatchId.value;
-  const candidateId = dom.candidateId.value;
-  const teamId = dom.candidateTeamSelect.value;
-  const note = dom.candidateNote.value.trim();
-
-  if (!teamId) {
-    alert('チームを候補一覧から選択してください。リストにない場合は「チーム管理」から追加してください。');
-    $('candidate-team-search')?.focus();
-    return;
-  }
-
   const match = state.matches.find(m => String(m.id) === String(matchId));
   if (!match) return;
   normalizeMatch(match);
 
-  const team = state.teams.find(t => t.id === teamId);
-  if (!team) return;
-
-  let finalCategory = team.category;
-  if (team.category === '両方') {
-    const selectedRadio = Array.from(dom.candidateParticipationRadios).find(r => r.checked);
-    if (selectedRadio) finalCategory = selectedRadio.value;
-  }
-
+  const candidateId = dom.candidateId.value;
   if (candidateId) {
     const candidate = match.candidates.find(c => String(c.id) === String(candidateId));
     if (candidate) {
-      candidate.teamId = team.id;
-      candidate.teamName = team.name;
-      candidate.affiliation = team.affiliation;
-      candidate.category = finalCategory;
-      candidate.note = note;
       candidate.updatedAt = todayString();
-      showToast(`「${team.name}」を更新しました`, '💾');
+      showToast('候補を更新しました', '💾');
     }
-  } else {
+    saveState();
+    closeModal(dom.modalCandidate);
+    render();
+    return;
+  }
+
+  // 複数一括追加モード
+  if (candidateSelectedTeamIds.size === 0) {
+    alert('追加するチームのチェックボックスを選択してください');
+    return;
+  }
+
+  const selectedTeams = state.teams.filter(t => candidateSelectedTeamIds.has(String(t.id)));
+  selectedTeams.forEach(team => {
+    // 重複防止
+    if (match.candidates.some(c => String(c.teamId) === String(team.id))) return;
+
+    const finalCategory = team.category === '両方' ? (match.category || '一般') : (team.category || '一般');
     match.candidates.push({
       id: generateId(),
       teamId: team.id,
       teamName: team.name,
-      affiliation: team.affiliation,
+      affiliation: team.affiliation || '',
       category: finalCategory,
       status: '未連絡',
-      note,
+      note: '',
       updatedAt: todayString(),
     });
-    showToast(`「${team.name}」を追加しました`, '🎉');
-  }
+  });
 
   saveState();
   closeModal(dom.modalCandidate);
   render();
+  showToast(`${selectedTeams.length}チームを候補に追加しました`, '🎉');
 }
 
 function confirmDeleteCandidate(matchId, candidateId) {

@@ -17,7 +17,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <link rel="stylesheet" href="style.css?v=20261015_v19">
+  <link rel="stylesheet" href="style.css?v=20261015_v24">
 </head>
 <body>
 
@@ -287,39 +287,31 @@
           <input type="hidden" id="candidate-match-id" value="">
           <input type="hidden" id="candidate-id" value="">
 
-          <!-- Team Select (search + suggestions) -->
-          <div class="form-group">
-            <label class="form-label" for="candidate-team-search">チームを選択</label>
+          <div class="form-group" style="margin-bottom: 0;">
+            <div class="candidate-category-filter">
+              <span class="candidate-category-filter-title">カテゴリー:</span>
+              <label class="candidate-filter-label">
+                <input type="checkbox" id="candidate-filter-ippan" class="candidate-filter-checkbox" checked>
+                <span class="candidate-filter-text">一般</span>
+              </label>
+              <label class="candidate-filter-label">
+                <input type="checkbox" id="candidate-filter-senior" class="candidate-filter-checkbox" checked>
+                <span class="candidate-filter-text">シニア</span>
+              </label>
+            </div>
             <div class="team-search-box">
               <span class="team-search-icon" aria-hidden="true">🔍</span>
-              <input type="text" class="form-input team-search-input" id="candidate-team-search" placeholder="チーム名の一部を入力（例: ふじ）" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="candidate-team-suggest">
+              <input type="text" class="form-input team-search-input" id="candidate-team-search" placeholder="チーム名で絞り込み..." autocomplete="off">
               <button type="button" class="team-search-clear" id="candidate-team-clear" aria-label="入力をクリア">✕</button>
             </div>
-            <ul class="team-suggest-list" id="candidate-team-suggest" role="listbox"></ul>
+            <div class="candidate-select-summary" style="margin-top: 8px; font-size: 12px; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center;">
+              <span>選択中: <strong id="candidate-selected-count" style="color: var(--accent-primary); font-size: 13px;">0</strong> チーム</span>
+              <button type="button" id="btn-candidate-clear-selection" style="background: none; border: none; font-size: 11px; color: var(--text-muted); cursor: pointer; text-decoration: underline;">選択解除</button>
+            </div>
+            <ul class="candidate-team-checklist" id="candidate-team-suggest"></ul>
             <select class="form-select" id="candidate-team-select" hidden>
               <option value="" disabled selected>チームを選択してください</option>
             </select>
-          </div>
-
-          <!-- Participation Category (For 'Both' teams) -->
-          <div class="form-group" id="group-candidate-participation-category" style="display: none; margin-top: 12px; padding: 12px; background: var(--bg-secondary); border-radius: var(--radius-md);">
-            <label class="form-label" style="margin-bottom: 8px;">参加カテゴリーを選択</label>
-            <div style="display: flex; gap: 16px;">
-              <label style="display: flex; align-items: center; gap: 4px; cursor: pointer; color: var(--text-primary); font-size: 14px;">
-                <input type="radio" name="candidate-participation-category" value="一般" checked>
-                一般
-              </label>
-              <label style="display: flex; align-items: center; gap: 4px; cursor: pointer; color: var(--text-primary); font-size: 14px;">
-                <input type="radio" name="candidate-participation-category" value="シニア">
-                シニア
-              </label>
-            </div>
-          </div>
-
-          <!-- Note -->
-          <div class="form-group">
-            <label class="form-label" for="candidate-note">メモ</label>
-            <input type="text" class="form-input" id="candidate-note" placeholder="例: 担当者: 田中さん">
           </div>
 
           <div class="form-actions">
@@ -747,7 +739,7 @@
     }
   </script>
 
-  <script type="module" src="app.js?v=20261015_v19"></script>
+  <script type="module" src="app.js?v=20261015_v24"></script>
 
   <!-- PWA Service Worker Registration -->
   <script>
