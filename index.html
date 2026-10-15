@@ -17,7 +17,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <link rel="stylesheet" href="style.css?v=20261015_v24">
+  <link rel="stylesheet" href="style.css?v=20261015_v25">
 </head>
 <body>
 
@@ -106,6 +106,20 @@
         <span class="icon">＋</span>
         <span>新規マッチを作成</span>
       </button>
+    </div>
+
+    <!-- Match List Toolbar -->
+    <div class="match-list-toolbar" id="match-list-toolbar">
+      <div class="toolbar-info">
+        <span class="toolbar-title">試合・練習予定</span>
+        <span class="toolbar-count-badge" id="match-count-badge">0件</span>
+      </div>
+      <div class="toolbar-actions">
+        <button type="button" class="btn-toggle-all-cards" id="btn-toggle-all-cards">
+          <span class="btn-toggle-icon">📖</span>
+          <span class="btn-toggle-text">すべて開く</span>
+        </button>
+      </div>
     </div>
 
     <!-- Match Grid -->
@@ -739,7 +753,7 @@
     }
   </script>
 
-  <script type="module" src="app.js?v=20261015_v24"></script>
+  <script type="module" src="app.js?v=20261015_v26"></script>
 
   <!-- PWA Service Worker Registration -->
   <script>

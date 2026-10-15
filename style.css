@@ -251,6 +251,69 @@ body::before {
   margin-bottom: 24px;
 }
 
+/* --- Match List Toolbar --- */
+.match-list-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  padding: 8px 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md, 10px);
+}
+
+.toolbar-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toolbar-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.toolbar-count-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 700;
+  background: rgba(59, 130, 246, 0.15);
+  color: var(--accent-primary, #3b82f6);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.btn-toggle-all-cards {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: var(--bg-input);
+  border: 1px solid var(--border-subtle);
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.btn-toggle-all-cards:hover {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border-color: var(--border-focus);
+}
+
+.btn-toggle-all-cards.is-all-expanded {
+  background: rgba(59, 130, 246, 0.15);
+  color: #3b82f6;
+  border-color: rgba(59, 130, 246, 0.4);
+}
+
 /* --- Match Card Grid --- */
 .match-grid {
   display: grid;
@@ -277,6 +340,18 @@ body::before {
   border-color: var(--border-accent);
   background: var(--bg-card-hover);
   transform: translateY(-2px);
+}
+
+.match-card.expanded {
+  border-left: 4px solid var(--accent-primary) !important;
+  border-color: rgba(59, 130, 246, 0.5) !important;
+  box-shadow: 0 8px 28px rgba(59, 130, 246, 0.16) !important;
+}
+
+[data-theme="light"] .match-card.expanded {
+  border-left: 4px solid #2563eb !important;
+  border-color: rgba(37, 99, 235, 0.45) !important;
+  box-shadow: 0 8px 28px rgba(37, 99, 235, 0.12) !important;
 }
 
 .match-card-header {
@@ -511,6 +586,43 @@ body::before {
   text-transform: uppercase;
 }
 
+/* Card Toggle Pill Button */
+.btn-card-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-input);
+  color: var(--text-secondary);
+  transition: all 0.18s ease;
+  user-select: none;
+  line-height: 1.4;
+}
+
+.btn-card-toggle:hover {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border-color: var(--border-accent);
+}
+
+.btn-card-toggle.is-expanded {
+  background: rgba(59, 130, 246, 0.18);
+  border-color: rgba(59, 130, 246, 0.5);
+  color: #3b82f6;
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.25);
+}
+
+[data-theme="light"] .btn-card-toggle.is-expanded {
+  background: rgba(37, 99, 235, 0.12);
+  border-color: rgba(37, 99, 235, 0.4);
+  color: #2563eb;
+}
+
 .match-vs-teams {
   display: flex;
   align-items: center;
@@ -657,23 +769,34 @@ body::before {
   box-shadow: none;
 }
 
-/* --- Candidate List --- */
-.candidate-section {
+/* --- Match Expanded Section (Details Area) --- */
+.match-expanded-section {
+  display: none;
+  padding: 14px 18px 18px;
   border-top: 1px solid var(--border-subtle);
-  max-height: 0;
-  overflow: hidden;
-  transition: max-height var(--transition-slow), opacity var(--transition-normal);
-  opacity: 0;
+  background: rgba(0, 0, 0, 0.12);
+  border-bottom-left-radius: var(--radius-lg);
+  border-bottom-right-radius: var(--radius-lg);
+  animation: fadeIn 0.18s ease-out;
 }
 
-.match-card.expanded .candidate-section {
-  max-height: 2000px;
-  opacity: 1;
+[data-theme="light"] .match-expanded-section {
+  background: rgba(0, 0, 0, 0.025);
+}
+
+.match-card.expanded .match-expanded-section {
+  display: block;
+}
+
+/* --- Candidate List --- */
+.candidate-section {
+  max-height: none;
   overflow: visible;
+  opacity: 1;
 }
 
 .candidate-list {
-  padding: 12px 20px 16px;
+  padding: 8px 0 0;
 }
 
 .candidate-list-header {
@@ -2713,9 +2836,16 @@ body::before {
 
 .practice-expanded-section {
   display: none;
-  padding: 12px 14px;
+  padding: 14px 18px 18px;
   border-top: 1px solid var(--border-subtle);
-  background: var(--bg-card);
+  background: rgba(0, 0, 0, 0.12);
+  border-bottom-left-radius: var(--radius-lg);
+  border-bottom-right-radius: var(--radius-lg);
+  animation: fadeIn 0.18s ease-out;
+}
+
+[data-theme="light"] .practice-expanded-section {
+  background: rgba(0, 0, 0, 0.025);
 }
 
 .match-card.expanded .practice-expanded-section {

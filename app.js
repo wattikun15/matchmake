@@ -741,12 +741,15 @@ function render() {
     visibleMatches = state.matches.filter(m => !m.date || m.date >= today);
   }
 
+  const toolbar = $('match-list-toolbar');
   if (visibleMatches.length === 0) {
     dom.emptyState.style.display = '';
     dom.matchGrid.style.display = 'none';
+    if (toolbar) toolbar.style.display = 'none';
   } else {
     dom.emptyState.style.display = 'none';
     dom.matchGrid.style.display = '';
+    if (toolbar) toolbar.style.display = 'flex';
   }
 
   const sorted = [...visibleMatches].sort((a, b) => {
@@ -756,8 +759,36 @@ function render() {
     return a.date.localeCompare(b.date);
   });
 
+  const countBadge = $('match-count-badge');
+  if (countBadge) {
+    countBadge.textContent = `${sorted.length}件`;
+  }
+
+  const btnToggleAll = $('btn-toggle-all-cards');
+  if (btnToggleAll) {
+    const allExpanded = sorted.length > 0 && sorted.every(m => m._expanded);
+    btnToggleAll.className = 'btn-toggle-all-cards' + (allExpanded ? ' is-all-expanded' : '');
+    btnToggleAll.innerHTML = allExpanded
+      ? '<span class="btn-toggle-icon">📕</span><span class="btn-toggle-text">すべて閉じる</span>'
+      : '<span class="btn-toggle-icon">📖</span><span class="btn-toggle-text">すべて開く</span>';
+  }
+
   dom.matchGrid.innerHTML = sorted.map(match => renderMatchCard(match)).join('');
   attachCardEvents();
+}
+
+function toggleAllCards() {
+  let visibleMatches = state.matches;
+  if (!state.showPastMatches) {
+    const today = todayString();
+    visibleMatches = state.matches.filter(m => !m.date || m.date >= today);
+  }
+  if (visibleMatches.length === 0) return;
+  const anyClosed = visibleMatches.some(m => !m._expanded);
+  visibleMatches.forEach(m => {
+    m._expanded = anyClosed;
+  });
+  render();
 }
 
 function renderMatchCard(match) {
@@ -781,6 +812,17 @@ function renderMatchCard(match) {
   const progressPct = needed > 0 ? Math.min(100, (okCount / needed) * 100) : 0;
   const isComplete = okCount >= needed && needed > 0;
 
+  let respondedSubText = '';
+  if (respondedCount > 0) {
+    if (okTeams.length > 0 && ngTeams.length > 0) {
+      respondedSubText = `<span class="chip-sub">(OK ${okTeams.length} / NG ${ngTeams.length})</span>`;
+    } else if (okTeams.length > 0) {
+      respondedSubText = `<span class="chip-sub">(OK ${okTeams.length})</span>`;
+    } else if (ngTeams.length > 0) {
+      respondedSubText = `<span class="chip-sub">(NG ${ngTeams.length})</span>`;
+    }
+  }
+
   // VS 対戦カードスロット、または練習バナーの組み立て
   let vsContainerHtml = '';
   if (!isPractice) {
@@ -799,46 +841,17 @@ function renderMatchCard(match) {
     }
     const vsTeamsHtml = vsSlots.join('');
 
-    let respondedSubText = '';
-    if (respondedCount > 0) {
-      if (okTeams.length > 0 && ngTeams.length > 0) {
-        respondedSubText = `<span class="chip-sub">(OK ${okTeams.length} / NG ${ngTeams.length})</span>`;
-      } else if (okTeams.length > 0) {
-        respondedSubText = `<span class="chip-sub">(OK ${okTeams.length})</span>`;
-      } else if (ngTeams.length > 0) {
-        respondedSubText = `<span class="chip-sub">(NG ${ngTeams.length})</span>`;
-      }
-    }
-
     vsContainerHtml = `
-        <!-- ⚽ 対戦チーム (枠一覧) & 声掛けパイプライン進捗 -->
+        <!-- ⚽ 対戦チーム (枠一覧) -->
         <div class="match-vs-container" data-action="toggle" data-match-id="${match.id}">
           <div class="match-vs-header">
             <span class="match-vs-label">⚽ 対戦チーム</span>
-            <span style="font-size: 11px; color: var(--text-muted);">${match._expanded ? '▲ 閉じる' : '▼ 候補・詳細を見る'}</span>
+            <button type="button" class="btn-card-toggle ${match._expanded ? 'is-expanded' : ''}" data-action="toggle" data-match-id="${match.id}">
+              ${match._expanded ? '▲ 閉じる' : '候補・詳細 ▾'}
+            </button>
           </div>
           <div class="match-vs-teams">
             ${vsTeamsHtml}
-          </div>
-
-          <!-- 声掛け・返答状況サマリーチップ -->
-          <div class="candidate-summary-chips">
-            <div class="summary-chip chip-contacting" title="現在連絡中で返答待ちのチーム数">
-              <span class="chip-icon">💬</span>
-              <span class="chip-label">声掛け中</span>
-              <span class="chip-count">${contactingTeams.length}</span>
-            </div>
-            <div class="summary-chip chip-responded" title="返答をもらったチーム数（OK: ${okTeams.length} / NG: ${ngTeams.length}）">
-              <span class="chip-icon">📬</span>
-              <span class="chip-label">返答あり</span>
-              <span class="chip-count">${respondedCount}</span>
-              ${respondedSubText}
-            </div>
-            <div class="summary-chip chip-uncontacted" title="まだ声掛けしていない候補チーム数">
-              <span class="chip-icon">📨</span>
-              <span class="chip-label">未連絡</span>
-              <span class="chip-count">${uncontactedTeams.length}</span>
-            </div>
           </div>
         </div>
     `;
@@ -851,7 +864,9 @@ function renderMatchCard(match) {
               <span>🏃</span>
               <span>通常練習・紅白戦（対戦相手なし）</span>
             </div>
-            <span style="font-size: 11px; color: var(--text-muted);">${match._expanded ? '▲ 閉じる' : '▼ 詳細'}</span>
+            <button type="button" class="btn-card-toggle ${match._expanded ? 'is-expanded' : ''}" data-action="toggle" data-match-id="${match.id}">
+              ${match._expanded ? '▲ 閉じる' : '詳細 ▾'}
+            </button>
           </div>
         </div>
     `;
@@ -939,37 +954,47 @@ function renderMatchCard(match) {
     `;
   } else {
     detailsSectionHtml = `
-        <div class="match-progress">
-          <div class="progress-info">
-            <span class="progress-label">確定進捗</span>
-            <span class="progress-count"><span class="ok-count">${okCount}</span> / ${needed}</span>
-          </div>
-          <div class="progress-bar">
-            <div class="progress-bar-fill ${isComplete ? 'complete' : ''}" style="width: ${progressPct}%"></div>
-          </div>
-        </div>
-        <div class="candidate-section">
-          ${isComplete ? `
-            <div class="match-step-prompt">
-              <div class="step-prompt-text">
-                <span style="font-size: 18px;">🎉</span>
-                <span><strong>対戦チームが確定しました！</strong> 自チームの参加メンバーを調整しましょう</span>
-              </div>
-              <button type="button" class="btn-primary btn-step-action" data-action="manage-participants" data-match-id="${match.id}">
-                👥 メンバー出欠を調整 (${pStatusCounts['参加']}/${match.matchRecruitCount || '-'}名)
-              </button>
+        <div class="match-expanded-section">
+          <!-- 声掛け・返答状況サマリーチップ -->
+          <div class="candidate-summary-chips">
+            <div class="summary-chip chip-contacting" title="現在連絡中で返答待ちのチーム数">
+              <span class="chip-icon">💬</span>
+              <span class="chip-label">声掛け中</span>
+              <span class="chip-count">${contactingTeams.length}</span>
             </div>
-          ` : ''}
+            <div class="summary-chip chip-responded" title="返答をもらったチーム数（OK: ${okTeams.length} / NG: ${ngTeams.length}）">
+              <span class="chip-icon">📬</span>
+              <span class="chip-label">返答あり</span>
+              <span class="chip-count">${respondedCount}</span>
+              ${respondedSubText}
+            </div>
+            <div class="summary-chip chip-uncontacted" title="まだ声掛けしていない候補チーム数">
+              <span class="chip-icon">📨</span>
+              <span class="chip-label">未連絡</span>
+              <span class="chip-count">${uncontactedTeams.length}</span>
+            </div>
+          </div>
 
-          <div class="candidate-list">
-            <div class="candidate-list-header">
-              <span class="candidate-list-title">対戦候補チーム (${match.candidates.length}件)</span>
-              <button type="button" class="btn-add-candidate" data-action="add-candidate" data-match-id="${match.id}">＋ 追加</button>
+          <div class="match-progress">
+            <div class="progress-info">
+              <span class="progress-label">確定進捗</span>
+              <span class="progress-count"><span class="ok-count">${okCount}</span> / ${needed}</span>
             </div>
-            ${match.candidates.length > 0
-              ? candidateRows
-              : '<div class="candidate-empty">まだ対戦候補がありません。「＋ 追加」からチームを追加してください</div>'
-            }
+            <div class="progress-bar">
+              <div class="progress-bar-fill ${isComplete ? 'complete' : ''}" style="width: ${progressPct}%"></div>
+            </div>
+          </div>
+          <div class="candidate-section">
+            <div class="candidate-list">
+              <div class="candidate-list-header">
+                <span class="candidate-list-title">対戦候補チーム (${match.candidates.length}件)</span>
+                <button type="button" class="btn-add-candidate" data-action="add-candidate" data-match-id="${match.id}">＋ 追加</button>
+              </div>
+              ${match.candidates.length > 0
+                ? candidateRows
+                : '<div class="candidate-empty">まだ対戦候補がありません。「＋ 追加」からチームを追加してください</div>'
+              }
+            </div>
           </div>
         </div>
     `;
@@ -2155,6 +2180,7 @@ function init() {
   $('btn-open-team-modal')?.addEventListener('click', openTeamModal);
   $('btn-open-location-modal')?.addEventListener('click', openLocationModal);
   $('btn-open-analytics-modal')?.addEventListener('click', openAnalyticsModal);
+  $('btn-toggle-all-cards')?.addEventListener('click', toggleAllCards);
 
   // Mobile Bottom Nav
   $('btn-bottom-add-match')?.addEventListener('click', openCreateMatchModal);
