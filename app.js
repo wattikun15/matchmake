@@ -961,14 +961,24 @@ function renderMatchCard(match) {
             </div>
           ` : ''}
 
+          <!-- チーム直接追加入力欄 -->
+          <div class="candidate-quick-picker">
+            <div class="quick-add-custom-row">
+              <div class="quick-team-search-wrap">
+                <input type="text" class="quick-team-input" id="quick-team-input-${match.id}" placeholder="チーム名を入力して追加..." data-match-id="${match.id}" autocomplete="off">
+                <ul class="quick-team-suggest-list" id="quick-team-suggest-${match.id}"></ul>
+              </div>
+              <button type="button" class="btn-quick-add-custom" data-action="quick-add-custom-team" data-match-id="${match.id}">＋ 追加</button>
+            </div>
+          </div>
+
           <div class="candidate-list">
             <div class="candidate-list-header">
               <span class="candidate-list-title">対戦候補チーム (${match.candidates.length}件)</span>
-              <button type="button" class="btn-add-candidate" data-action="add-candidate" data-match-id="${match.id}">＋ 候補追加</button>
             </div>
             ${match.candidates.length > 0
               ? candidateRows
-              : '<div class="candidate-empty">まだ対戦候補がありません。「＋ 候補追加」からチームを追加してください</div>'
+              : '<div class="candidate-empty">まだ対戦候補がありません。上の入力欄からチームを追加してください</div>'
             }
           </div>
         </div>
