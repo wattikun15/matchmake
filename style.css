@@ -2837,6 +2837,24 @@ body::before {
   background: var(--bg-input);
 }
 
+.quick-suggest-header {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  padding: 6px 10px 4px;
+  border-bottom: 1px solid var(--border-subtle);
+  margin-bottom: 4px;
+  letter-spacing: .03em;
+}
+
+.quick-suggest-empty {
+  padding: 12px 14px;
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+  line-height: 1.5;
+}
+
 .btn-quick-add-custom {
   padding: 6px 14px;
   font-size: 12px;
@@ -2994,6 +3012,22 @@ body::before {
 
 [data-theme="light"] .step-prompt-text {
   color: #065f46;
+}
+
+[data-theme="light"] .quick-team-suggest-list {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+[data-theme="light"] .quick-suggest-header {
+  border-color: #e2e8f0;
+  color: #64748b;
+}
+
+[data-theme="light"] .quick-suggest-item:hover,
+[data-theme="light"] .quick-suggest-item.active {
+  background: #f1f5f9;
 }
 
 

@@ -1115,9 +1115,13 @@ function attachCardEvents() {
 
   dom.matchGrid.addEventListener('focusin', (e) => {
     if (e.target.classList.contains('quick-team-input')) {
-      if (e.target.value.trim()) {
-        renderQuickTeamSuggestions(e.target);
-      }
+      renderQuickTeamSuggestions(e.target);
+    }
+  });
+
+  dom.matchGrid.addEventListener('click', (e) => {
+    if (e.target.classList.contains('quick-team-input')) {
+      renderQuickTeamSuggestions(e.target);
     }
   });
 
@@ -1127,7 +1131,7 @@ function attachCardEvents() {
       setTimeout(() => {
         const list = document.getElementById(`quick-team-suggest-${matchId}`);
         if (list) list.classList.remove('show');
-      }, 150);
+      }, 200);
     }
   });
 
@@ -1182,42 +1186,66 @@ function renderQuickTeamSuggestions(input) {
   const match = state.matches.find(m => String(m.id) === String(matchId));
   if (!match) return;
 
-  const query = normalizeForSearch(input.value);
-  if (!query) {
-    list.innerHTML = '';
-    list.classList.remove('show');
-    return;
-  }
-
   const existingTeamIds = new Set(match.candidates.map(c => String(c.teamId)).filter(Boolean));
   let availableTeams = state.teams.filter(t => !existingTeamIds.has(String(t.id)));
   if (match.category === 'シニア') {
     availableTeams = availableTeams.filter(t => t.category === 'シニア' || t.category === '両方');
   }
 
-  const matched = availableTeams
-    .map(t => {
-      const name = normalizeForSearch(t.name);
-      const affil = normalizeForSearch(t.affiliation);
-      let score = -1;
-      if (name.startsWith(query)) score = 0;
-      else if (name.includes(query)) score = 1;
-      else if (affil.includes(query)) score = 2;
-      return { t, score };
-    })
-    .filter(x => x.score >= 0)
-    .sort((a, b) => a.score - b.score)
-    .map(x => x.t);
+  const query = normalizeForSearch(input.value);
 
   list.innerHTML = '';
-  if (matched.length === 0) {
-    list.classList.remove('show');
+
+  if (availableTeams.length === 0) {
+    const emptyLi = document.createElement('li');
+    emptyLi.className = 'quick-suggest-empty';
+    emptyLi.textContent = 'すべての登録チームが追加済みです';
+    list.appendChild(emptyLi);
+    list.classList.add('show');
     return;
   }
 
-  matched.slice(0, 8).forEach((team, idx) => {
+  let teamsToShow = [];
+  let isFiltered = false;
+
+  if (query) {
+    isFiltered = true;
+    teamsToShow = availableTeams
+      .map(t => {
+        const name = normalizeForSearch(t.name);
+        const affil = normalizeForSearch(t.affiliation);
+        let score = -1;
+        if (name.startsWith(query)) score = 0;
+        else if (name.includes(query)) score = 1;
+        else if (affil.includes(query)) score = 2;
+        return { t, score };
+      })
+      .filter(x => x.score >= 0)
+      .sort((a, b) => a.score - b.score)
+      .map(x => x.t)
+      .slice(0, 10);
+
+    if (teamsToShow.length === 0) {
+      const emptyLi = document.createElement('li');
+      emptyLi.className = 'quick-suggest-empty';
+      emptyLi.innerHTML = `一致するチームがありません<br><span style="color:var(--accent-primary);font-weight:600;">「＋ 追加」</span>で新規チームとして追加できます`;
+      list.appendChild(emptyLi);
+      list.classList.add('show');
+      return;
+    }
+  } else {
+    // 未入力時（クリック時）: ヘッダーをつけて全チームを表示（スクロール対応）
+    const headerLi = document.createElement('li');
+    headerLi.className = 'quick-suggest-header';
+    headerLi.textContent = `登録チーム (${availableTeams.length}件) - タップで即追加`;
+    list.appendChild(headerLi);
+    teamsToShow = availableTeams;
+  }
+
+  teamsToShow.forEach((team, idx) => {
     const li = document.createElement('li');
-    li.className = 'quick-suggest-item' + (idx === 0 ? ' active' : '');
+    // 入力して絞り込んだ場合のみ最初の候補を active にする（未入力時の誤Enter防止）
+    li.className = 'quick-suggest-item' + (isFiltered && idx === 0 ? ' active' : '');
     li.dataset.teamId = team.id;
     li.dataset.matchId = matchId;
 
@@ -1232,12 +1260,14 @@ function renderQuickTeamSuggestions(input) {
       <span style="font-size:11px;color:var(--accent-primary);font-weight:700;white-space:nowrap;margin-left:8px;">＋ 追加</span>
     `;
 
-    li.addEventListener('mousedown', (e) => {
+    const handleSelect = (e) => {
       e.preventDefault();
       quickAddTeamToMatch(matchId, team.id);
       input.value = '';
       list.classList.remove('show');
-    });
+    };
+    li.addEventListener('pointerdown', handleSelect);
+    li.addEventListener('mousedown', handleSelect);
 
     list.appendChild(li);
   });
@@ -2208,6 +2238,11 @@ function init() {
       document.querySelectorAll('.status-dropdown-menu.show').forEach(menu => {
         menu.classList.remove('show');
         menu.closest('.candidate-item')?.classList.remove('menu-open');
+      });
+    }
+    if (!e.target.closest('.quick-team-search-wrap')) {
+      document.querySelectorAll('.quick-team-suggest-list.show').forEach(list => {
+        list.classList.remove('show');
       });
     }
   });

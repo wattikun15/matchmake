@@ -2,7 +2,7 @@
 //  MatchBoard - Service Worker (PWA Support)
 // ==========================================
 
-const CACHE_NAME = 'matchboard-pwa-v16';
+const CACHE_NAME = 'matchboard-pwa-v17';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
