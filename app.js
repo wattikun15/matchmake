@@ -851,9 +851,8 @@ function renderMatchCard(match) {
               <span>🏃</span>
               <span>通常練習・紅白戦（対戦相手なし）</span>
             </div>
-            <span style="font-size: 11px; color: var(--text-muted);">${match._expanded ? '▲ 閉じる' : '▼ 要項・出欠を見る'}</span>
+            <span style="font-size: 11px; color: var(--text-muted);">${match._expanded ? '▲ 閉じる' : '▼ 詳細'}</span>
           </div>
-          ${match.matchInfoNote ? `<div class="practice-banner-note">📝 備考: ${escapeHtml(match.matchInfoNote)}</div>` : ''}
         </div>
     `;
   }
@@ -962,60 +961,14 @@ function renderMatchCard(match) {
             </div>
           ` : ''}
 
-          <!-- ⚡ クイック候補ピッカー -->
-          <div class="candidate-quick-picker">
-            <div class="quick-picker-header">
-              <span class="quick-picker-title">⚡ クイック候補追加（タップで即追加）</span>
-              <button type="button" class="btn-icon" data-action="add-candidate" data-match-id="${match.id}" title="詳細条件を指定して追加" style="font-size:11px; padding: 2px 6px;">⚙️ 詳細追加</button>
-            </div>
-            <div class="quick-team-chips">
-              ${(() => {
-                const existingTeamIds = new Set(match.candidates.map(c => String(c.teamId)).filter(Boolean));
-                const availableTeams = state.teams.filter(t => !existingTeamIds.has(String(t.id)));
-                if (availableTeams.length === 0) {
-                  return '<span style="font-size:12px; color:var(--text-muted);">登録チームはすべて候補に追加済みです</span>';
-                }
-                // Split into favorite (first 5) and other teams
-                const favoriteCount = 5;
-                const favoriteTeams = availableTeams.slice(0, favoriteCount);
-                const otherTeams = availableTeams.slice(favoriteCount);
-                const favHtml = favoriteTeams.map(t => `
-                  <button type="button" class="quick-team-chip" data-action="quick-add-team" data-match-id="${match.id}" data-team-id="${t.id}" title="${escapeHtml(t.name)}を候補に追加">
-                    ＋ ${escapeHtml(t.name)}
-                  </button>`).join('');
-                const otherHtml = otherTeams.map(t => `
-                  <button type="button" class="quick-team-chip" data-action="quick-add-team" data-match-id="${match.id}" data-team-id="${t.id}" title="${escapeHtml(t.name)}を候補に追加">
-                    ＋ ${escapeHtml(t.name)}
-                  </button>`).join('');
-                const toggleId = `quick-add-toggle-${match.id}`;
-                const otherSection = otherTeams.length > 0 ? `
-                  <div class="quick-add-collapsible">
-                    <div class="quick-add-header" data-action="toggle-collapsible" data-target="${toggleId}" style="cursor:pointer; font-size:12px; color:var(--text-muted); margin-top:4px;">
-                      ⬇️ その他のチーム (${otherTeams.length})
-                    </div>
-                    <div id="${toggleId}" class="quick-add-content" style="display:none; margin-top:4px;">
-                      ${otherHtml}
-                    </div>
-                  </div>` : '';
-                return favHtml + otherSection;
-              })()}
-            </div>
-            <div class="quick-add-custom-row">
-              <div class="quick-team-search-wrap">
-                <input type="text" class="quick-team-input" id="quick-team-input-${match.id}" placeholder="その他のチーム名を入力して即追加..." data-match-id="${match.id}" autocomplete="off">
-                <ul class="quick-team-suggest-list" id="quick-team-suggest-${match.id}"></ul>
-              </div>
-              <button type="button" class="btn-quick-add-custom" data-action="quick-add-custom-team" data-match-id="${match.id}">＋ 追加</button>
-            </div>
-          </div>
-
           <div class="candidate-list">
             <div class="candidate-list-header">
               <span class="candidate-list-title">対戦候補チーム (${match.candidates.length}件)</span>
+              <button type="button" class="btn-add-candidate" data-action="add-candidate" data-match-id="${match.id}">＋ 候補追加</button>
             </div>
             ${match.candidates.length > 0
               ? candidateRows
-              : '<div class="candidate-empty">まだ対戦候補がありません。上のボタンからチームを追加してください</div>'
+              : '<div class="candidate-empty">まだ対戦候補がありません。「＋ 候補追加」からチームを追加してください</div>'
             }
           </div>
         </div>

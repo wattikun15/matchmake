@@ -2608,9 +2608,14 @@ body::before {
 }
 
 .practice-expanded-section {
+  display: none;
   padding: 12px 14px;
   border-top: 1px solid var(--border-subtle);
   background: var(--bg-card);
+}
+
+.match-card.expanded .practice-expanded-section {
+  display: block;
 }
 
 .practice-details-card {
